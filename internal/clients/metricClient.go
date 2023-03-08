@@ -33,10 +33,14 @@ func MetricsUpload(client *http.Client, mtrcs *metrics.Metrics) {
 			url = fmt.Sprintf(url, metric.GetKind(), metric.GetName(), int64(metric.GetGaugeValue()))
 		}
 
-		_, err := client.Post(url, "text/plain", nil)
+		resp, err := client.Post(url, "text/plain", nil)
 		if err != nil {
 			log.Println("Error: ", err)
 		}
 
+		err = resp.Body.Close()
+		if err != nil {
+			log.Println("Couldn't close body of response. Error: ", err)
+		}
 	}
 }
