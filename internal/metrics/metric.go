@@ -112,3 +112,7 @@ func UpdateMetrics(metrics *Metrics) {
 		NewMetricGauge("RandomValue", Gauge(rand.Float64()*math.MaxFloat64)),
 	}
 }
+
+func (m *Metrics) ResetPollCounter() {
+	m.pollCounter = 0
+}

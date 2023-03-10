@@ -43,4 +43,5 @@ func MetricsUpload(client *http.Client, mtrcs *metrics.Metrics) {
 			log.Println("Couldn't close body of response. Error: ", err)
 		}
 	}
+	mtrcs.ResetPollCounter()
 }
