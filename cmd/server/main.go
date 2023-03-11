@@ -20,7 +20,7 @@ func updateStorageHandler(storage repository.MetricRepository) http.HandlerFunc 
 			return
 		}
 		kind, name := urlSlice[2], urlSlice[3]
-		newMetric := metrics.Metric{}
+		var newMetric metrics.Metric
 
 		switch kind {
 		case "gauge":
