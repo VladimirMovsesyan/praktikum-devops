@@ -49,7 +49,7 @@ func updateStorageHandler(storage repository.MetricRepository) http.HandlerFunc 
 }
 
 func main() {
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	go func() {
 		sig := <-c
