@@ -4,6 +4,7 @@ import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -103,9 +104,15 @@ func TestUpdateStorageHandler(t *testing.T) {
 			handler := UpdateStorageHandler(tt.args.storage)
 			handler(rec, request)
 			result := rec.Result()
+
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 			if tt.want.statusCode == http.StatusOK {
 				assert.Equal(t, tt.want.mtrcs, tt.args.storage.GetMetrics())
+			}
+
+			err := result.Body.Close()
+			if err != nil {
+				log.Println("Error: ", err)
 			}
 		})
 	}
