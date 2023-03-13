@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/handlers"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"log"
 	"net/http"
 	"os"
@@ -17,7 +19,13 @@ func main() {
 		sig := <-c
 		log.Fatal(sig.String())
 	}()
+	router := chi.NewRouter()
 	storage := &repository.MemStorage{}
-	http.HandleFunc("/update/", handlers.UpdateStorageHandler(storage))
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	router.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
+
+	router.Get("/", handlers.PrintStorageHandler(storage))
+	router.Get("/value/{kind}/{name}", handlers.PrintValueHandler(storage))
+	router.Post("/update/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage))
+
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
