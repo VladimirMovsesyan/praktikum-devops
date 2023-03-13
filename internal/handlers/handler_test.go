@@ -107,7 +107,7 @@ func TestUpdateStorageHandler(t *testing.T) {
 
 			request := httptest.NewRequest(http.MethodPost, tt.target, nil)
 			recorder := httptest.NewRecorder()
-			
+
 			router.ServeHTTP(recorder, request)
 			result := recorder.Result()
 
@@ -146,7 +146,7 @@ func TestPrintStorageHandler(t *testing.T) {
 			storage: storage,
 			want: want{
 				statusCode: http.StatusOK,
-				html:       "<h1>counter test 444</h1><h1>gauge test 321.000000</h1>",
+				html:       "<h1>counter test 444</h1><h1>gauge test 321.000</h1>",
 			},
 		},
 		{
@@ -209,7 +209,7 @@ func TestPrintValueHandler(t *testing.T) {
 			storage: storage,
 			want: want{
 				statusCode: http.StatusOK,
-				html:       "<h1>counter test 444</h1>",
+				html:       "444",
 			},
 		},
 		{
@@ -218,7 +218,7 @@ func TestPrintValueHandler(t *testing.T) {
 			storage: storage,
 			want: want{
 				statusCode: http.StatusOK,
-				html:       "<h1>gauge test 321.000000</h1>",
+				html:       "321.000",
 			},
 		},
 		{

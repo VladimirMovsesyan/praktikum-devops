@@ -56,11 +56,11 @@ func PrintStorageHandler(storage repository.MetricRepository) http.HandlerFunc {
 			result := value.GetKind() + " " + value.GetName() + " "
 			switch value.GetKind() {
 			case "gauge":
-				result += fmt.Sprintf("%f", value.GetGaugeValue())
+				result += fmt.Sprintf("%.3f", value.GetGaugeValue())
 			case "counter":
 				result += fmt.Sprintf("%d", value.GetCounterValue())
 			}
-			_, err := rw.Write([]byte("<h1>" + result + "</h1>"))
+			_, err := rw.Write([]byte(result))
 			if err != nil {
 				log.Println("Error: Couldn't write data to response!")
 				rw.WriteHeader(http.StatusInternalServerError)
@@ -78,10 +78,10 @@ func PrintValueHandler(storage repository.MetricRepository) http.HandlerFunc {
 		mtrcs := storage.GetMetrics()
 		for _, value := range mtrcs {
 			if value.GetKind() == kind && value.GetName() == name {
-				result := kind + " " + name + " "
+				var result string
 				switch kind {
 				case "gauge":
-					result += fmt.Sprintf("%f", value.GetGaugeValue())
+					result += fmt.Sprintf("%.3f", value.GetGaugeValue())
 				case "counter":
 					result += fmt.Sprintf("%d", value.GetCounterValue())
 				default:
@@ -89,7 +89,7 @@ func PrintValueHandler(storage repository.MetricRepository) http.HandlerFunc {
 					return
 				}
 
-				_, err := rw.Write([]byte("<h1>" + result + "</h1>"))
+				_, err := rw.Write([]byte(result))
 				if err != nil {
 					log.Println("Error: Couldn't write data to response!")
 					rw.WriteHeader(http.StatusInternalServerError)
