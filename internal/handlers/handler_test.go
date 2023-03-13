@@ -146,7 +146,7 @@ func TestPrintStorageHandler(t *testing.T) {
 			storage: storage,
 			want: want{
 				statusCode: http.StatusOK,
-				html:       "<h1>counter test 444</h1><h1>gauge test 321.000</h1>",
+				html:       "counter test 444gauge test 321.000",
 			},
 		},
 		{
