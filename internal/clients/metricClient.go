@@ -9,9 +9,8 @@ import (
 )
 
 const (
-	scheme       = "http://"
-	host         = "127.0.0.1:8080"
-	updateFormat = "/update/%s/%s/%d"
+	updateGaugeFormat   = "/update/%s/%s/%f"
+	updateCounterFormat = "/update/%s/%s/%d"
 )
 
 func NewMetricsClient() *http.Client {
@@ -20,17 +19,16 @@ func NewMetricsClient() *http.Client {
 	return client
 }
 
-func MetricsUpload(client *http.Client, mtrcs *metrics.Metrics) {
+func MetricsUpload(client *http.Client, mtrcs *metrics.Metrics, baseURL string) {
 	for _, metric := range mtrcs.MetricSlice {
-		url := scheme + host + updateFormat
+		url := baseURL
 		switch metric.GetKind() {
 		case "gauge":
-			url = fmt.Sprintf(url, metric.GetKind(), metric.GetName(), int64(metric.GetGaugeValue()))
+			url = fmt.Sprintf(url+updateGaugeFormat, metric.GetKind(), metric.GetName(), metric.GetGaugeValue())
 		case "counter":
-			url = fmt.Sprintf(url, metric.GetKind(), metric.GetName(), int64(metric.GetCounterValue()))
+			url = fmt.Sprintf(url+updateCounterFormat, metric.GetKind(), metric.GetName(), metric.GetCounterValue())
 		default:
-			log.Println("Error: unsupported metric type!")
-			url = fmt.Sprintf(url, metric.GetKind(), metric.GetName(), int64(metric.GetGaugeValue()))
+			log.Fatal("Error: unsupported metric type!")
 		}
 
 		resp, err := client.Post(url, "text/plain", nil)

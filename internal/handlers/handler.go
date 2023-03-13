@@ -21,7 +21,7 @@ func UpdateStorageHandler(storage repository.MetricRepository) http.HandlerFunc 
 
 		switch kind {
 		case "gauge":
-			value, err := strconv.Atoi(urlSlice[4])
+			value, err := strconv.ParseFloat(urlSlice[4], 64)
 			if err != nil {
 				log.Println(err)
 				rw.WriteHeader(http.StatusBadRequest)
