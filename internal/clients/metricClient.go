@@ -21,25 +21,31 @@ func NewMetricsClient() *http.Client {
 
 func MetricsUpload(client *http.Client, mtrcs *metrics.Metrics, baseURL string) {
 	for _, metric := range mtrcs.MetricSlice {
-		url := baseURL
-		switch metric.GetKind() {
-		case "gauge":
-			url = fmt.Sprintf(url+updateGaugeFormat, metric.GetKind(), metric.GetName(), metric.GetGaugeValue())
-		case "counter":
-			url = fmt.Sprintf(url+updateCounterFormat, metric.GetKind(), metric.GetName(), metric.GetCounterValue())
-		default:
-			log.Fatal("Error: unsupported metric type!")
-		}
+		metricUpload(client, baseURL, metric)
+	}
+	mtrcs.ResetPollCounter()
+}
 
-		resp, err := client.Post(url, "text/plain", nil)
-		if err != nil {
-			log.Println("Error: ", err)
-		}
+func metricUpload(client *http.Client, baseURL string, metric metrics.Metric) {
+	url := baseURL
+	switch metric.GetKind() {
+	case "gauge":
+		url = fmt.Sprintf(url+updateGaugeFormat, metric.GetKind(), metric.GetName(), metric.GetGaugeValue())
+	case "counter":
+		url = fmt.Sprintf(url+updateCounterFormat, metric.GetKind(), metric.GetName(), metric.GetCounterValue())
+	default:
+		log.Fatal("Error: unsupported metric type!")
+	}
 
-		err = resp.Body.Close()
+	resp, err := client.Post(url, "text/plain", nil)
+	if err != nil {
+		log.Println("Error: ", err)
+	}
+
+	defer func(resp *http.Response) {
+		err := resp.Body.Close()
 		if err != nil {
 			log.Println("Couldn't close body of response. Error: ", err)
 		}
-	}
-	mtrcs.ResetPollCounter()
+	}(resp)
 }

@@ -116,10 +116,12 @@ func TestUpdateStorageHandler(t *testing.T) {
 				assert.Equal(t, tt.want.mtrcs, tt.args.storage.GetMetrics())
 			}
 
-			err := result.Body.Close()
-			if err != nil {
-				log.Println("Error: ", err)
-			}
+			defer func(resp *http.Response) {
+				err := resp.Body.Close()
+				if err != nil {
+					log.Println("Error: ", err)
+				}
+			}(result)
 		})
 	}
 }
@@ -177,10 +179,12 @@ func TestPrintStorageHandler(t *testing.T) {
 				assert.Equal(t, tt.want.html, str)
 			}
 
-			err := result.Body.Close()
-			if err != nil {
-				log.Println("Error: ", err)
-			}
+			defer func(resp *http.Response) {
+				err := resp.Body.Close()
+				if err != nil {
+					log.Println("Error: ", err)
+				}
+			}(result)
 		})
 	}
 }
@@ -259,10 +263,12 @@ func TestPrintValueHandler(t *testing.T) {
 				assert.Equal(t, tt.want.html, str)
 			}
 
-			err := result.Body.Close()
-			if err != nil {
-				log.Println("Error: ", err)
-			}
+			defer func(resp *http.Response) {
+				err := resp.Body.Close()
+				if err != nil {
+					log.Println("Error: ", err)
+				}
+			}(result)
 		})
 	}
 }
