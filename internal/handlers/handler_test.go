@@ -14,7 +14,7 @@ import (
 
 func TestUpdateStorageHandler(t *testing.T) {
 	type args struct {
-		storage repository.MetricRepository
+		storage MetricRepository
 	}
 
 	type want struct {
@@ -140,7 +140,7 @@ func TestPrintStorageHandler(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		storage repository.MetricRepository
+		storage MetricRepository
 		want    want
 	}{
 		{
@@ -204,7 +204,7 @@ func TestPrintValueHandler(t *testing.T) {
 	tests := []struct {
 		name    string
 		target  string
-		storage repository.MetricRepository
+		storage MetricRepository
 		want    want
 	}{
 		{

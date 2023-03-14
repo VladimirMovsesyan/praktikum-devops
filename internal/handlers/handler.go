@@ -3,14 +3,18 @@ package handlers
 import (
 	"fmt"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
-	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
 	"strconv"
 )
 
-func UpdateStorageHandler(storage repository.MetricRepository) http.HandlerFunc {
+type MetricRepository interface {
+	GetMetrics() []metrics.Metric
+	Update(metrics.Metric)
+}
+
+func UpdateStorageHandler(storage MetricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		kind := chi.URLParam(r, "kind")
 		name := chi.URLParam(r, "name")
@@ -49,7 +53,7 @@ func UpdateStorageHandler(storage repository.MetricRepository) http.HandlerFunc 
 	}
 }
 
-func PrintStorageHandler(storage repository.MetricRepository) http.HandlerFunc {
+func PrintStorageHandler(storage MetricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		mtrcs := storage.GetMetrics()
 		for _, value := range mtrcs {
@@ -71,7 +75,7 @@ func PrintStorageHandler(storage repository.MetricRepository) http.HandlerFunc {
 	}
 }
 
-func PrintValueHandler(storage repository.MetricRepository) http.HandlerFunc {
+func PrintValueHandler(storage MetricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		kind := chi.URLParam(r, "kind")
 		name := chi.URLParam(r, "name")

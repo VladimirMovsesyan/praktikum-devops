@@ -31,12 +31,3 @@ func (ms *MemStorage) Update(newMetric metrics.Metric) {
 	}
 	ms.mtrcs = append(ms.mtrcs, newMetric)
 }
-
-func (ms *MemStorage) Delete(newMetric metrics.Metric) {
-	for i, metric := range ms.mtrcs {
-		if sameMetric(metric, newMetric) {
-			ms.mtrcs = append(ms.mtrcs[:i], ms.mtrcs[i+1:]...)
-			return
-		}
-	}
-}
