@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/handlers"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
 	"github.com/go-chi/chi/v5"
@@ -13,12 +14,6 @@ import (
 )
 
 func main() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
-	go func() {
-		sig := <-c
-		log.Fatal(sig.String())
-	}()
 	router := chi.NewRouter()
 	storage := repository.NewMemStorage()
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
@@ -27,5 +22,22 @@ func main() {
 	router.Get("/value/{kind}/{name}", handlers.PrintValueHandler(storage))
 	router.Post("/update/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage))
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	server := http.Server{Addr: ":8080", Handler: router}
+	idle := make(chan struct{})
+
+	go func() {
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatal("HTTP server ListenAndServe:", err)
+		}
+		<-idle
+	}()
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	<-signals
+
+	if err := server.Shutdown(context.Background()); err != nil {
+		log.Println("HTTP server Shutdown:", err)
+	}
+	close(idle)
 }
