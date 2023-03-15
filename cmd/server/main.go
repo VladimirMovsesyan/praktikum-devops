@@ -20,7 +20,7 @@ func main() {
 		log.Fatal(sig.String())
 	}()
 	router := chi.NewRouter()
-	storage := &repository.MemStorage{}
+	storage := repository.NewMemStorage()
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
 
 	router.Get("/", handlers.PrintStorageHandler(storage))

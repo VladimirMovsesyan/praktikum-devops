@@ -18,7 +18,7 @@ func TestUpdateStorageHandler(t *testing.T) {
 	}
 
 	type want struct {
-		mtrcs      []metrics.Metric
+		mtrcs      map[string]metrics.Metric
 		statusCode int
 	}
 
@@ -31,56 +31,56 @@ func TestUpdateStorageHandler(t *testing.T) {
 		{
 			name: "NotFound",
 			args: args{
-				storage: &repository.MemStorage{},
+				storage: repository.NewMemStorage(),
 			},
 			target: "/update",
 			want: want{
-				mtrcs:      []metrics.Metric{},
+				mtrcs:      map[string]metrics.Metric{},
 				statusCode: http.StatusNotFound,
 			},
 		},
 		{
 			name: "GaugeBadRequest",
 			args: args{
-				storage: &repository.MemStorage{},
+				storage: repository.NewMemStorage(),
 			},
 			target: "/update/gauge/test/value",
 			want: want{
-				mtrcs:      []metrics.Metric{},
+				mtrcs:      map[string]metrics.Metric{},
 				statusCode: http.StatusBadRequest,
 			},
 		},
 		{
 			name: "CounterBadRequest",
 			args: args{
-				storage: &repository.MemStorage{},
+				storage: repository.NewMemStorage(),
 			},
 			target: "/update/counter/test/value",
 			want: want{
-				mtrcs:      []metrics.Metric{},
+				mtrcs:      map[string]metrics.Metric{},
 				statusCode: http.StatusBadRequest,
 			},
 		},
 		{
 			name: "NotImplemented",
 			args: args{
-				storage: &repository.MemStorage{},
+				storage: repository.NewMemStorage(),
 			},
 			target: "/update/something/test/value",
 			want: want{
-				mtrcs:      []metrics.Metric{},
+				mtrcs:      map[string]metrics.Metric{},
 				statusCode: http.StatusNotImplemented,
 			},
 		},
 		{
 			name: "GaugeOK",
 			args: args{
-				storage: &repository.MemStorage{},
+				storage: repository.NewMemStorage(),
 			},
 			target: "/update/gauge/test/12",
 			want: want{
-				mtrcs: []metrics.Metric{
-					metrics.NewMetricGauge("test", 12),
+				mtrcs: map[string]metrics.Metric{
+					"test": metrics.NewMetricGauge("test", 12),
 				},
 				statusCode: http.StatusOK,
 			},
@@ -88,12 +88,12 @@ func TestUpdateStorageHandler(t *testing.T) {
 		{
 			name: "CounterOK",
 			args: args{
-				storage: &repository.MemStorage{},
+				storage: repository.NewMemStorage(),
 			},
 			target: "/update/counter/test/12",
 			want: want{
-				mtrcs: []metrics.Metric{
-					metrics.NewMetricCounter("test", 12),
+				mtrcs: map[string]metrics.Metric{
+					"test": metrics.NewMetricCounter("test", 12),
 				},
 				statusCode: http.StatusOK,
 			},
@@ -127,11 +127,11 @@ func TestUpdateStorageHandler(t *testing.T) {
 }
 
 func TestPrintStorageHandler(t *testing.T) {
-	storage := &repository.MemStorage{}
-	storage.Update(metrics.NewMetricCounter("test", 123))
-	storage.Update(metrics.NewMetricGauge("test", 123))
-	storage.Update(metrics.NewMetricCounter("test", 321))
-	storage.Update(metrics.NewMetricGauge("test", 321))
+	storage := repository.NewMemStorage()
+	storage.Update(metrics.NewMetricCounter("testC", 123))
+	storage.Update(metrics.NewMetricGauge("testG", 123))
+	storage.Update(metrics.NewMetricCounter("testC", 321))
+	storage.Update(metrics.NewMetricGauge("testG", 321))
 
 	type want struct {
 		statusCode int
@@ -148,12 +148,12 @@ func TestPrintStorageHandler(t *testing.T) {
 			storage: storage,
 			want: want{
 				statusCode: http.StatusOK,
-				html:       "counter test 444gauge test 321.000",
+				html:       "counter testC 444gauge testG 321.000",
 			},
 		},
 		{
 			name:    "EmptyStorage",
-			storage: &repository.MemStorage{},
+			storage: repository.NewMemStorage(),
 			want: want{
 				statusCode: http.StatusOK,
 				html:       "",
@@ -190,11 +190,11 @@ func TestPrintStorageHandler(t *testing.T) {
 }
 
 func TestPrintValueHandler(t *testing.T) {
-	storage := &repository.MemStorage{}
-	storage.Update(metrics.NewMetricCounter("test", 123))
-	storage.Update(metrics.NewMetricGauge("test", 123))
-	storage.Update(metrics.NewMetricCounter("test", 321))
-	storage.Update(metrics.NewMetricGauge("test", 321))
+	storage := repository.NewMemStorage()
+	storage.Update(metrics.NewMetricCounter("testC", 123))
+	storage.Update(metrics.NewMetricGauge("testG", 123))
+	storage.Update(metrics.NewMetricCounter("testC", 321))
+	storage.Update(metrics.NewMetricGauge("testG", 321))
 
 	type want struct {
 		statusCode int
@@ -209,7 +209,7 @@ func TestPrintValueHandler(t *testing.T) {
 	}{
 		{
 			name:    "CounterOk",
-			target:  "/value/counter/test",
+			target:  "/value/counter/testC",
 			storage: storage,
 			want: want{
 				statusCode: http.StatusOK,
@@ -218,7 +218,7 @@ func TestPrintValueHandler(t *testing.T) {
 		},
 		{
 			name:    "GaugeOk",
-			target:  "/value/gauge/test",
+			target:  "/value/gauge/testG",
 			storage: storage,
 			want: want{
 				statusCode: http.StatusOK,
@@ -237,7 +237,7 @@ func TestPrintValueHandler(t *testing.T) {
 		{
 			name:    "EmptyStorage",
 			target:  "/value/counter/Polls",
-			storage: &repository.MemStorage{},
+			storage: repository.NewMemStorage(),
 			want: want{
 				statusCode: http.StatusNotFound,
 				html:       "",

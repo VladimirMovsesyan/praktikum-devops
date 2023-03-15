@@ -27,7 +27,7 @@ func TestMetricsUpload(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			storage := &repository.MemStorage{}
+			storage := repository.NewMemStorage()
 			router := chi.NewRouter()
 			router.Post("/update/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage))
 
@@ -38,7 +38,10 @@ func TestMetricsUpload(t *testing.T) {
 			metrics.UpdateMetrics(mtrcs)
 
 			MetricsUpload(client, mtrcs, server.URL)
-			require.Equal(t, mtrcs.MetricSlice, storage.GetMetrics())
+			storageMetrics := storage.GetMetrics()
+			for _, value := range mtrcs.MetricSlice {
+				require.Equal(t, value, storageMetrics[value.GetName()])
+			}
 		})
 	}
 }

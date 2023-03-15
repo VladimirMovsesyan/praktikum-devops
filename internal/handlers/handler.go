@@ -10,7 +10,7 @@ import (
 )
 
 type MetricRepository interface {
-	GetMetrics() []metrics.Metric
+	GetMetrics() map[string]metrics.Metric
 	Update(metrics.Metric)
 }
 
@@ -80,30 +80,34 @@ func PrintValueHandler(storage MetricRepository) http.HandlerFunc {
 		kind := chi.URLParam(r, "kind")
 		name := chi.URLParam(r, "name")
 		mtrcs := storage.GetMetrics()
-		for _, value := range mtrcs {
-			if value.GetKind() == kind && value.GetName() == name {
-				var result string
-				switch kind {
-				case "gauge":
-					result += fmt.Sprintf("%.3f", value.GetGaugeValue())
-				case "counter":
-					result += fmt.Sprintf("%d", value.GetCounterValue())
-				default:
-					rw.WriteHeader(http.StatusNotImplemented)
-					return
-				}
+		value, ok := mtrcs[name]
 
-				_, err := rw.Write([]byte(result))
-				if err != nil {
-					log.Println("Error: Couldn't write data to response!")
-					rw.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-
-				rw.WriteHeader(http.StatusOK)
-				return
-			}
+		if ok == false || value.GetKind() != kind {
+			rw.WriteHeader(http.StatusNotFound)
+			return
 		}
-		rw.WriteHeader(http.StatusNotFound)
+
+		var result string
+
+		switch kind {
+		case "gauge":
+			result = fmt.Sprintf("%.3f", value.GetGaugeValue())
+		case "counter":
+			result = fmt.Sprintf("%d", value.GetCounterValue())
+		default:
+			rw.WriteHeader(http.StatusNotImplemented)
+			return
+		}
+
+		_, err := rw.Write([]byte(result))
+		if err != nil {
+			log.Println("Error: Couldn't write data to response!")
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		rw.WriteHeader(http.StatusOK)
+		return
+
 	}
 }

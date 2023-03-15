@@ -1,33 +1,39 @@
 package repository
 
-import "github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
+import (
+	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
+	"log"
+)
 
 type MemStorage struct {
-	mtrcs []metrics.Metric
+	mtrcs map[string]metrics.Metric
 }
 
-func sameMetric(metric1, metric2 metrics.Metric) bool {
-	return metric1.GetKind() == metric2.GetKind() && metric1.GetName() == metric2.GetName()
+func NewMemStorage() *MemStorage {
+	return &MemStorage{
+		mtrcs: map[string]metrics.Metric{},
+	}
 }
 
-func (ms *MemStorage) GetMetrics() []metrics.Metric {
+func (ms *MemStorage) GetMetrics() map[string]metrics.Metric {
 	return ms.mtrcs
 }
 
 func (ms *MemStorage) Update(newMetric metrics.Metric) {
-	for index, metric := range ms.mtrcs {
-		if sameMetric(metric, newMetric) {
-			switch metric.GetKind() {
-			case "gauge":
-				ms.mtrcs[index] = newMetric
-			case "counter":
-				ms.mtrcs[index] = metrics.NewMetricCounter(
-					metric.GetName(),
-					metric.GetCounterValue()+newMetric.GetCounterValue(),
-				)
-			}
-			return
+	switch newMetric.GetKind() {
+	case "gauge":
+		ms.mtrcs[newMetric.GetName()] = newMetric
+	case "counter":
+		metric, ok := ms.mtrcs[newMetric.GetName()]
+		if ok == true {
+			ms.mtrcs[newMetric.GetName()] = metrics.NewMetricCounter(
+				newMetric.GetName(),
+				metric.GetCounterValue()+newMetric.GetCounterValue(),
+			)
+		} else {
+			ms.mtrcs[newMetric.GetName()] = newMetric
 		}
+	default:
+		log.Println("Error: not implemented!")
 	}
-	ms.mtrcs = append(ms.mtrcs, newMetric)
 }
