@@ -34,7 +34,8 @@ func main() {
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
-	<-signals
+	sig := <-signals
+	log.Println(sig.String())
 
 	if err := server.Shutdown(context.Background()); err != nil {
 		log.Println("HTTP server Shutdown:", err)

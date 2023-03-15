@@ -41,6 +41,7 @@ func metricUpload(baseURL string, metric metrics.Metric) {
 	resp, err := client.Post(url, "text/plain", nil)
 	if err != nil {
 		log.Println("Error: ", err)
+		return
 	}
 
 	defer func(resp *http.Response) {
