@@ -23,13 +23,11 @@ func main() {
 	router.Post("/update/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage))
 
 	server := http.Server{Addr: ":8080", Handler: router}
-	idle := make(chan struct{})
 
 	go func() {
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatal("HTTP server ListenAndServe:", err)
 		}
-		<-idle
 	}()
 
 	signals := make(chan os.Signal, 1)
@@ -40,5 +38,4 @@ func main() {
 	if err := server.Shutdown(context.Background()); err != nil {
 		log.Println("HTTP server Shutdown:", err)
 	}
-	close(idle)
 }
