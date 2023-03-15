@@ -11,7 +11,6 @@ import (
 )
 
 func TestMetricsUpload(t *testing.T) {
-	client := NewMetricsClient()
 	tests := []struct {
 		name string
 	}{
@@ -37,7 +36,10 @@ func TestMetricsUpload(t *testing.T) {
 			mtrcs := metrics.NewMetrics()
 			metrics.UpdateMetrics(mtrcs)
 
-			MetricsUpload(client, mtrcs, server.URL)
+			for _, metric := range mtrcs.MetricSlice {
+				metricUpload(server.URL, metric)
+			}
+
 			storageMetrics := storage.GetMetrics()
 			for _, value := range mtrcs.MetricSlice {
 				require.Equal(t, value, storageMetrics[value.GetName()])

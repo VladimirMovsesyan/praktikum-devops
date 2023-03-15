@@ -9,7 +9,6 @@ import (
 func main() {
 	// Creating objects of metrics and client
 	mtrcs := metrics.NewMetrics()
-	client := clients.NewMetricsClient()
 
 	// Creating poll and report intervals
 	pollInterval := time.NewTicker(2 * time.Second)
@@ -23,7 +22,7 @@ func main() {
 			metrics.UpdateMetrics(mtrcs)
 		case <-reportInterval.C:
 			// Sending metrics
-			clients.MetricsUpload(client, mtrcs, "http://127.0.0.1:8080")
+			clients.MetricsUpload(mtrcs)
 		}
 	}
 }

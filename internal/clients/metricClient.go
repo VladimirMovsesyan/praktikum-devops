@@ -19,14 +19,15 @@ func NewMetricsClient() *http.Client {
 	return client
 }
 
-func MetricsUpload(client *http.Client, mtrcs *metrics.Metrics, baseURL string) {
+func MetricsUpload(mtrcs *metrics.Metrics) {
 	for _, metric := range mtrcs.MetricSlice {
-		metricUpload(client, baseURL, metric)
+		metricUpload("http://127.0.0.1:8080", metric)
 	}
 	mtrcs.ResetPollCounter()
 }
 
-func metricUpload(client *http.Client, baseURL string, metric metrics.Metric) {
+func metricUpload(baseURL string, metric metrics.Metric) {
+	client := NewMetricsClient()
 	url := baseURL
 	switch metric.GetKind() {
 	case "gauge":
