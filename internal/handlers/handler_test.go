@@ -6,7 +6,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -110,18 +109,12 @@ func TestUpdateStorageHandler(t *testing.T) {
 
 			router.ServeHTTP(recorder, request)
 			result := recorder.Result()
+			defer result.Body.Close()
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 			if tt.want.statusCode == http.StatusOK {
 				assert.Equal(t, tt.want.mtrcs, tt.args.storage.GetMetrics())
 			}
-
-			defer func(resp *http.Response) {
-				err := resp.Body.Close()
-				if err != nil {
-					log.Println("Error: ", err)
-				}
-			}(result)
 		})
 	}
 }
@@ -171,6 +164,7 @@ func TestPrintStorageHandler(t *testing.T) {
 
 			router.ServeHTTP(recorder, request)
 			result := recorder.Result()
+			defer result.Body.Close()
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 			if tt.want.statusCode == http.StatusOK {
@@ -178,13 +172,6 @@ func TestPrintStorageHandler(t *testing.T) {
 				str := string(slice[:])
 				assert.Equal(t, tt.want.html, str)
 			}
-
-			defer func(resp *http.Response) {
-				err := resp.Body.Close()
-				if err != nil {
-					log.Println("Error: ", err)
-				}
-			}(result)
 		})
 	}
 }
@@ -255,6 +242,7 @@ func TestPrintValueHandler(t *testing.T) {
 
 			router.ServeHTTP(recorder, request)
 			result := recorder.Result()
+			defer result.Body.Close()
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 			if tt.want.statusCode == http.StatusOK {
@@ -262,13 +250,6 @@ func TestPrintValueHandler(t *testing.T) {
 				str := string(slice[:])
 				assert.Equal(t, tt.want.html, str)
 			}
-
-			defer func(resp *http.Response) {
-				err := resp.Body.Close()
-				if err != nil {
-					log.Println("Error: ", err)
-				}
-			}(result)
 		})
 	}
 }

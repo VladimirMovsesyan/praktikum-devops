@@ -25,7 +25,7 @@ func (ms *MemStorage) Update(newMetric metrics.Metric) {
 		ms.mtrcs[newMetric.GetName()] = newMetric
 	case "counter":
 		metric, ok := ms.mtrcs[newMetric.GetName()]
-		if ok == true {
+		if ok {
 			ms.mtrcs[newMetric.GetName()] = metrics.NewMetricCounter(
 				newMetric.GetName(),
 				metric.GetCounterValue()+newMetric.GetCounterValue(),

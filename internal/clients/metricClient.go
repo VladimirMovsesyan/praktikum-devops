@@ -43,11 +43,5 @@ func metricUpload(baseURL string, metric metrics.Metric) {
 		log.Println("Error: ", err)
 		return
 	}
-
-	defer func(resp *http.Response) {
-		err := resp.Body.Close()
-		if err != nil {
-			log.Println("Couldn't close body of response. Error: ", err)
-		}
-	}(resp)
+	defer resp.Body.Close()
 }

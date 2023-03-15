@@ -82,7 +82,7 @@ func PrintValueHandler(storage MetricRepository) http.HandlerFunc {
 		mtrcs := storage.GetMetrics()
 		value, ok := mtrcs[name]
 
-		if ok == false || value.GetKind() != kind {
+		if !ok || value.GetKind() != kind {
 			rw.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -107,7 +107,5 @@ func PrintValueHandler(storage MetricRepository) http.HandlerFunc {
 		}
 
 		rw.WriteHeader(http.StatusOK)
-		return
-
 	}
 }
