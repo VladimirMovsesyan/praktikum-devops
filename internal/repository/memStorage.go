@@ -3,9 +3,11 @@ package repository
 import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"log"
+	"sync"
 )
 
 type MemStorage struct {
+	mutex sync.RWMutex
 	mtrcs map[string]metrics.Metric
 }
 
@@ -20,6 +22,9 @@ func (ms *MemStorage) GetMetrics() map[string]metrics.Metric {
 }
 
 func (ms *MemStorage) Update(newMetric metrics.Metric) {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+
 	switch newMetric.GetKind() {
 	case "gauge":
 		ms.mtrcs[newMetric.GetName()] = newMetric
