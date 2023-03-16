@@ -1,27 +1,35 @@
 package handlers
 
 import (
+	"fmt"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
-	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
+	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
-func UpdateStorageHandler(storage repository.MetricRepository) http.HandlerFunc {
+type MetricRepository interface {
+	GetMetrics() map[string]metrics.Metric
+	Update(metrics.Metric)
+}
+
+func UpdateStorageHandler(storage MetricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		urlSlice := strings.Split(r.URL.Path, "/")
-		if len(urlSlice) != 5 {
+		kind := chi.URLParam(r, "kind")
+		name := chi.URLParam(r, "name")
+		value := chi.URLParam(r, "value")
+
+		var newMetric metrics.Metric
+
+		if value == "" {
 			rw.WriteHeader(http.StatusNotFound)
 			return
 		}
-		kind, name := urlSlice[2], urlSlice[3]
-		var newMetric metrics.Metric
 
 		switch kind {
 		case "gauge":
-			value, err := strconv.ParseFloat(urlSlice[4], 64)
+			value, err := strconv.ParseFloat(value, 64)
 			if err != nil {
 				log.Println(err)
 				rw.WriteHeader(http.StatusBadRequest)
@@ -29,7 +37,7 @@ func UpdateStorageHandler(storage repository.MetricRepository) http.HandlerFunc 
 			}
 			newMetric = metrics.NewMetricGauge(name, metrics.Gauge(value))
 		case "counter":
-			value, err := strconv.Atoi(urlSlice[4])
+			value, err := strconv.Atoi(value)
 			if err != nil {
 				log.Println(err)
 				rw.WriteHeader(http.StatusBadRequest)
@@ -41,6 +49,63 @@ func UpdateStorageHandler(storage repository.MetricRepository) http.HandlerFunc 
 			return
 		}
 		storage.Update(newMetric)
+		rw.WriteHeader(http.StatusOK)
+	}
+}
+
+func PrintStorageHandler(storage MetricRepository) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		mtrcs := storage.GetMetrics()
+		for _, value := range mtrcs {
+			result := value.GetKind() + " " + value.GetName() + " "
+			switch value.GetKind() {
+			case "gauge":
+				result += fmt.Sprintf("%.3f", value.GetGaugeValue())
+			case "counter":
+				result += fmt.Sprintf("%d", value.GetCounterValue())
+			}
+			_, err := rw.Write([]byte(result))
+			if err != nil {
+				log.Println("Error: Couldn't write data to response!")
+				rw.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+		rw.WriteHeader(http.StatusOK)
+	}
+}
+
+func PrintValueHandler(storage MetricRepository) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		kind := chi.URLParam(r, "kind")
+		name := chi.URLParam(r, "name")
+		mtrcs := storage.GetMetrics()
+		value, ok := mtrcs[name]
+
+		if !ok || value.GetKind() != kind {
+			rw.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		var result string
+
+		switch kind {
+		case "gauge":
+			result = fmt.Sprintf("%.3f", value.GetGaugeValue())
+		case "counter":
+			result = fmt.Sprintf("%d", value.GetCounterValue())
+		default:
+			rw.WriteHeader(http.StatusNotImplemented)
+			return
+		}
+
+		_, err := rw.Write([]byte(result))
+		if err != nil {
+			log.Println("Error: Couldn't write data to response!")
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		rw.WriteHeader(http.StatusOK)
 	}
 }

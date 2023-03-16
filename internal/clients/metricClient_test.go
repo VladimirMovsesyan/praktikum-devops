@@ -4,13 +4,13 @@ import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/handlers"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
 	"net/http/httptest"
 	"testing"
 )
 
 func TestMetricsUpload(t *testing.T) {
-	client := NewMetricsClient()
 	tests := []struct {
 		name string
 	}{
@@ -26,13 +26,24 @@ func TestMetricsUpload(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			storage := &repository.MemStorage{}
-			server := httptest.NewServer(handlers.UpdateStorageHandler(storage))
+			storage := repository.NewMemStorage()
+			router := chi.NewRouter()
+			router.Post("/update/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage))
+
+			server := httptest.NewServer(router)
 			defer server.Close()
+
 			mtrcs := metrics.NewMetrics()
 			metrics.UpdateMetrics(mtrcs)
-			MetricsUpload(client, mtrcs, server.URL)
-			require.Equal(t, mtrcs.MetricSlice, storage.GetMetrics())
+
+			for _, metric := range mtrcs.MetricSlice {
+				metricUpload(server.URL, metric)
+			}
+
+			storageMetrics := storage.GetMetrics()
+			for _, value := range mtrcs.MetricSlice {
+				require.Equal(t, value, storageMetrics[value.GetName()])
+			}
 		})
 	}
 }

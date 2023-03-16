@@ -3,13 +3,19 @@ package main
 import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/clients"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
 func main() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
 	// Creating objects of metrics and client
 	mtrcs := metrics.NewMetrics()
-	client := clients.NewMetricsClient()
 
 	// Creating poll and report intervals
 	pollInterval := time.NewTicker(2 * time.Second)
@@ -19,11 +25,14 @@ func main() {
 	for {
 		select {
 		case <-pollInterval.C:
-			// Updating metrics
-			metrics.UpdateMetrics(mtrcs)
+			//Updating metrics
+			go metrics.UpdateMetrics(mtrcs)
 		case <-reportInterval.C:
-			// Sending metrics
-			clients.MetricsUpload(client, mtrcs, "http://127.0.0.1:8080")
+			//Sending metrics
+			go clients.MetricsUpload(mtrcs)
+		case sig := <-signals:
+			log.Println(sig.String())
+			return
 		}
 	}
 }

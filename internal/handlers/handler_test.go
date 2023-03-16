@@ -3,8 +3,9 @@ package handlers
 import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
-	"log"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,11 +13,11 @@ import (
 
 func TestUpdateStorageHandler(t *testing.T) {
 	type args struct {
-		storage repository.MetricRepository
+		storage MetricRepository
 	}
 
 	type want struct {
-		mtrcs      []metrics.Metric
+		mtrcs      map[string]metrics.Metric
 		statusCode int
 	}
 
@@ -29,56 +30,56 @@ func TestUpdateStorageHandler(t *testing.T) {
 		{
 			name: "NotFound",
 			args: args{
-				storage: &repository.MemStorage{},
+				storage: repository.NewMemStorage(),
 			},
 			target: "/update",
 			want: want{
-				mtrcs:      []metrics.Metric{},
+				mtrcs:      map[string]metrics.Metric{},
 				statusCode: http.StatusNotFound,
 			},
 		},
 		{
 			name: "GaugeBadRequest",
 			args: args{
-				storage: &repository.MemStorage{},
+				storage: repository.NewMemStorage(),
 			},
 			target: "/update/gauge/test/value",
 			want: want{
-				mtrcs:      []metrics.Metric{},
+				mtrcs:      map[string]metrics.Metric{},
 				statusCode: http.StatusBadRequest,
 			},
 		},
 		{
 			name: "CounterBadRequest",
 			args: args{
-				storage: &repository.MemStorage{},
+				storage: repository.NewMemStorage(),
 			},
 			target: "/update/counter/test/value",
 			want: want{
-				mtrcs:      []metrics.Metric{},
+				mtrcs:      map[string]metrics.Metric{},
 				statusCode: http.StatusBadRequest,
 			},
 		},
 		{
 			name: "NotImplemented",
 			args: args{
-				storage: &repository.MemStorage{},
+				storage: repository.NewMemStorage(),
 			},
 			target: "/update/something/test/value",
 			want: want{
-				mtrcs:      []metrics.Metric{},
+				mtrcs:      map[string]metrics.Metric{},
 				statusCode: http.StatusNotImplemented,
 			},
 		},
 		{
 			name: "GaugeOK",
 			args: args{
-				storage: &repository.MemStorage{},
+				storage: repository.NewMemStorage(),
 			},
 			target: "/update/gauge/test/12",
 			want: want{
-				mtrcs: []metrics.Metric{
-					metrics.NewMetricGauge("test", 12),
+				mtrcs: map[string]metrics.Metric{
+					"test": metrics.NewMetricGauge("test", 12),
 				},
 				statusCode: http.StatusOK,
 			},
@@ -86,33 +87,168 @@ func TestUpdateStorageHandler(t *testing.T) {
 		{
 			name: "CounterOK",
 			args: args{
-				storage: &repository.MemStorage{},
+				storage: repository.NewMemStorage(),
 			},
 			target: "/update/counter/test/12",
 			want: want{
-				mtrcs: []metrics.Metric{
-					metrics.NewMetricCounter("test", 12),
+				mtrcs: map[string]metrics.Metric{
+					"test": metrics.NewMetricCounter("test", 12),
 				},
 				statusCode: http.StatusOK,
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			router := chi.NewRouter()
+			router.Post("/update/{kind}/{name}/{value}", UpdateStorageHandler(tt.args.storage))
+
 			request := httptest.NewRequest(http.MethodPost, tt.target, nil)
-			rec := httptest.NewRecorder()
-			handler := UpdateStorageHandler(tt.args.storage)
-			handler(rec, request)
-			result := rec.Result()
+			recorder := httptest.NewRecorder()
+
+			router.ServeHTTP(recorder, request)
+			result := recorder.Result()
+			defer result.Body.Close()
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 			if tt.want.statusCode == http.StatusOK {
 				assert.Equal(t, tt.want.mtrcs, tt.args.storage.GetMetrics())
 			}
+		})
+	}
+}
 
-			err := result.Body.Close()
-			if err != nil {
-				log.Println("Error: ", err)
+func TestPrintStorageHandler(t *testing.T) {
+	storage := repository.NewMemStorage()
+	storage.Update(metrics.NewMetricCounter("testC", 123))
+	storage.Update(metrics.NewMetricGauge("testG", 123))
+	storage.Update(metrics.NewMetricCounter("testC", 321))
+	storage.Update(metrics.NewMetricGauge("testG", 321))
+
+	type want struct {
+		statusCode int
+		html       string
+	}
+
+	tests := []struct {
+		name    string
+		storage MetricRepository
+		want    want
+	}{
+		{
+			name:    "OkStorage",
+			storage: storage,
+			want: want{
+				statusCode: http.StatusOK,
+				html:       "counter testC 444gauge testG 321.000",
+			},
+		},
+		{
+			name:    "EmptyStorage",
+			storage: repository.NewMemStorage(),
+			want: want{
+				statusCode: http.StatusOK,
+				html:       "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := chi.NewRouter()
+			router.Get("/", PrintStorageHandler(tt.storage))
+
+			request := httptest.NewRequest(http.MethodGet, "/", nil)
+			recorder := httptest.NewRecorder()
+
+			router.ServeHTTP(recorder, request)
+			result := recorder.Result()
+			defer result.Body.Close()
+
+			assert.Equal(t, tt.want.statusCode, result.StatusCode)
+			if tt.want.statusCode == http.StatusOK {
+				slice, _ := io.ReadAll(result.Body)
+				str := string(slice[:])
+				assert.Equal(t, tt.want.html, str)
+			}
+		})
+	}
+}
+
+func TestPrintValueHandler(t *testing.T) {
+	storage := repository.NewMemStorage()
+	storage.Update(metrics.NewMetricCounter("testC", 123))
+	storage.Update(metrics.NewMetricGauge("testG", 123))
+	storage.Update(metrics.NewMetricCounter("testC", 321))
+	storage.Update(metrics.NewMetricGauge("testG", 321))
+
+	type want struct {
+		statusCode int
+		html       string
+	}
+
+	tests := []struct {
+		name    string
+		target  string
+		storage MetricRepository
+		want    want
+	}{
+		{
+			name:    "CounterOk",
+			target:  "/value/counter/testC",
+			storage: storage,
+			want: want{
+				statusCode: http.StatusOK,
+				html:       "444",
+			},
+		},
+		{
+			name:    "GaugeOk",
+			target:  "/value/gauge/testG",
+			storage: storage,
+			want: want{
+				statusCode: http.StatusOK,
+				html:       "321.000",
+			},
+		},
+		{
+			name:    "NotFound",
+			target:  "/value/counter/Polls",
+			storage: storage,
+			want: want{
+				statusCode: http.StatusNotFound,
+				html:       "",
+			},
+		},
+		{
+			name:    "EmptyStorage",
+			target:  "/value/counter/Polls",
+			storage: repository.NewMemStorage(),
+			want: want{
+				statusCode: http.StatusNotFound,
+				html:       "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := chi.NewRouter()
+			router.Get("/value/{kind}/{name}", PrintValueHandler(tt.storage))
+
+			request := httptest.NewRequest(http.MethodGet, tt.target, nil)
+			recorder := httptest.NewRecorder()
+
+			router.ServeHTTP(recorder, request)
+			result := recorder.Result()
+			defer result.Body.Close()
+
+			assert.Equal(t, tt.want.statusCode, result.StatusCode)
+			if tt.want.statusCode == http.StatusOK {
+				slice, _ := io.ReadAll(result.Body)
+				str := string(slice[:])
+				assert.Equal(t, tt.want.html, str)
 			}
 		})
 	}
