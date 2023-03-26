@@ -3,12 +3,14 @@ package clients
 import (
 	"fmt"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
+	"github.com/VladimirMovsesyan/praktikum-devops/internal/utils"
 	"log"
 	"net/http"
 	"time"
 )
 
 const (
+	defaultProtocol     = "http://"
 	updateGaugeFormat   = "/update/%s/%s/%f"
 	updateCounterFormat = "/update/%s/%s/%d"
 )
@@ -20,15 +22,16 @@ func NewMetricsClient() *http.Client {
 }
 
 func MetricsUpload(mtrcs *metrics.Metrics) {
+	address := defaultProtocol + utils.UpdateAddress("ADDRESS", utils.DefaultAddress)
 	for _, metric := range mtrcs.MetricSlice {
-		metricUpload("http://127.0.0.1:8080", metric)
+		metricUpload(address, metric)
 	}
 	mtrcs.ResetPollCounter()
 }
 
-func metricUpload(baseURL string, metric metrics.Metric) {
+func metricUpload(address string, metric metrics.Metric) {
 	client := NewMetricsClient()
-	url := baseURL
+	url := address
 	switch metric.GetKind() {
 	case "gauge":
 		url = fmt.Sprintf(url+updateGaugeFormat, metric.GetKind(), metric.GetName(), metric.GetGaugeValue())
