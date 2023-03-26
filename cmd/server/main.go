@@ -14,7 +14,7 @@ import (
 func main() {
 	storage := repository.NewMemStorage()
 	router := utils.NewRouter(storage)
-	address := utils.UpdateAddress("ADDRESS", utils.DefaultAddress)
+	address := utils.UpdateStringEnv("ADDRESS", utils.DefaultAddress)
 	server := http.Server{Addr: address, Handler: router}
 
 	go func() {

@@ -25,15 +25,19 @@ func main() {
 
 	// Creating poll and report intervals
 	pollInterval := time.NewTicker(
-		utils.UpdateInterval(
-			"POLL_INTERVAL",
-			defaultPoll,
+		time.Duration(
+			utils.UpdateIntEnv(
+				"POLL_INTERVAL",
+				defaultPoll,
+			),
 		) * time.Second,
 	)
 	reportInterval := time.NewTicker(
-		utils.UpdateInterval(
-			"REPORT_INTERVAL",
-			defaultReport,
+		time.Duration(
+			utils.UpdateIntEnv(
+				"REPORT_INTERVAL",
+				defaultReport,
+			),
 		) * time.Second,
 	)
 

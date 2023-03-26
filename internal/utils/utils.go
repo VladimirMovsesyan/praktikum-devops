@@ -6,7 +6,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"os"
 	"strconv"
-	"time"
 )
 
 func NewRouter(storage handlers.MetricRepository) chi.Router {
@@ -28,7 +27,7 @@ func NewRouter(storage handlers.MetricRepository) chi.Router {
 	return router
 }
 
-func UpdateInterval(envName string, defaultValue time.Duration) time.Duration {
+func UpdateIntEnv(envName string, defaultValue int64) int64 {
 	value, ok := os.LookupEnv(envName)
 	if !ok {
 		return defaultValue
@@ -39,17 +38,25 @@ func UpdateInterval(envName string, defaultValue time.Duration) time.Duration {
 		return defaultValue
 	}
 
-	return time.Duration(result)
+	return result
 }
 
 const (
 	DefaultAddress = "127.0.0.1:8080"
 )
 
-func UpdateAddress(envName string, defaultValue string) string {
+func UpdateStringEnv(envName string, defaultValue string) string {
 	value, ok := os.LookupEnv(envName)
 	if !ok {
 		return defaultValue
 	}
 	return value
+}
+
+func UpdateBoolEnv(envName string, defaultValue bool) bool {
+	value, ok := os.LookupEnv(envName)
+	if !ok {
+		return defaultValue
+	}
+	return value == "1"
 }
