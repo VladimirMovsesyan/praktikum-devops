@@ -61,6 +61,13 @@ func main() {
 			if err := server.Shutdown(context.Background()); err != nil {
 				log.Println("HTTP server Shutdown:", err)
 			}
+
+			err := cache.ExportData(storeFilePath, storage)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
 			return
 		case <-storeInterval.C:
 			err := cache.ExportData(storeFilePath, storage)

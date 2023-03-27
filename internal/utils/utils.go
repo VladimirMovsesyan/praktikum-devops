@@ -58,5 +58,5 @@ func UpdateBoolEnv(envName string, defaultValue bool) bool {
 	if !ok {
 		return defaultValue
 	}
-	return value == "1"
+	return value == "true"
 }
