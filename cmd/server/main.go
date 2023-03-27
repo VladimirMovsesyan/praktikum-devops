@@ -22,19 +22,38 @@ const (
 func main() {
 	storage := repository.NewMemStorage()
 	router := utils.NewRouter(storage)
-	address := utils.UpdateStringEnv("ADDRESS", utils.DefaultAddress)
+	address := utils.UpdateStringVar(
+		"ADDRESS",
+		"a",
+		utils.DefaultAddress,
+		"Server IP address",
+	)
 	server := http.Server{Addr: address, Handler: router}
 
 	storeInterval := time.NewTicker(
 		time.Duration(
-			utils.UpdateIntEnv(
+			utils.UpdateIntVar(
 				"STORE_INTERVAL",
+				"i",
 				defaultStore,
+				"Interval of storing data to local json",
 			),
 		) * time.Second,
 	)
-	storeFilePath := utils.UpdateStringEnv("STORE_FILE", defaultStoreFile)
-	restore := utils.UpdateBoolEnv("RESTORE", defaultRestore)
+
+	storeFilePath := utils.UpdateStringVar(
+		"STORE_FILE",
+		"f",
+		defaultStoreFile,
+		"Path to storage file",
+	)
+
+	restore := utils.UpdateBoolVar(
+		"RESTORE",
+		"r",
+		defaultRestore,
+		"Is need to restore storage from local json",
+	)
 
 	if restore {
 		err := cache.ImportData(storeFilePath, storage)

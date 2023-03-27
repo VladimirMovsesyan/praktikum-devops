@@ -22,10 +22,17 @@ func NewMetricsClient() *http.Client {
 }
 
 func MetricsUpload(mtrcs *metrics.Metrics) {
-	address := defaultProtocol + utils.UpdateStringEnv("ADDRESS", utils.DefaultAddress)
+	address := defaultProtocol + utils.UpdateStringVar(
+		"ADDRESS",
+		"a",
+		utils.DefaultAddress,
+		"Server IP address",
+	)
+
 	for _, metric := range mtrcs.MetricSlice {
 		metricUpload(address, metric)
 	}
+
 	mtrcs.ResetPollCounter()
 }
 
