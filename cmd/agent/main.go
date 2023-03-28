@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/clients"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/utils"
@@ -12,9 +13,23 @@ import (
 )
 
 const (
-	defaultPoll   = 2
-	defaultReport = 10
+	defaultPoll   = 2 * time.Second
+	defaultReport = 10 * time.Second
 )
+
+var (
+	flAddr   *string        // ADDRESS
+	flPoll   *time.Duration // POLL_INTERVAL
+	flReport *time.Duration // REPORT_INTERVAL
+)
+
+func init() {
+	log.Println("agent init...")
+	flAddr = flag.String("a", utils.DefaultAddress, "Server IP address")          // ADDRESS
+	flPoll = flag.Duration("p", defaultPoll, "Interval of polling metrics")       // POLL_INTERVAL
+	flReport = flag.Duration("r", defaultReport, "Interval of reporting metrics") // REPORT_INTERVAL
+	flag.Parse()
+}
 
 func main() {
 	signals := make(chan os.Signal, 1)
@@ -25,24 +40,16 @@ func main() {
 
 	// Creating poll and report intervals
 	pollInterval := time.NewTicker(
-		time.Duration(
-			utils.UpdateIntVar(
-				"POLL_INTERVAL",
-				"p",
-				defaultPoll,
-				"Interval of polling metrics",
-			),
-		) * time.Second,
+		utils.UpdateDurVar(
+			"POLL_INTERVAL",
+			flPoll,
+		),
 	)
 	reportInterval := time.NewTicker(
-		time.Duration(
-			utils.UpdateIntVar(
-				"REPORT_INTERVAL",
-				"r",
-				defaultReport,
-				"Interval of reporting metrics to server",
-			),
-		) * time.Second,
+		utils.UpdateDurVar(
+			"REPORT_INTERVAL",
+			flReport,
+		),
 	)
 
 	// Agent's process
@@ -53,7 +60,7 @@ func main() {
 			go metrics.UpdateMetrics(mtrcs)
 		case <-reportInterval.C:
 			//Sending metrics
-			go clients.MetricsUpload(mtrcs)
+			go clients.MetricsUpload(mtrcs, flAddr)
 		case sig := <-signals:
 			log.Println(sig.String())
 			return

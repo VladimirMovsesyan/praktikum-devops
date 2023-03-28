@@ -21,12 +21,10 @@ func NewMetricsClient() *http.Client {
 	return client
 }
 
-func MetricsUpload(mtrcs *metrics.Metrics) {
+func MetricsUpload(mtrcs *metrics.Metrics, flAddr *string) {
 	address := defaultProtocol + utils.UpdateStringVar(
 		"ADDRESS",
-		"a",
-		utils.DefaultAddress,
-		"Server IP address",
+		flAddr,
 	)
 
 	for _, metric := range mtrcs.MetricSlice {

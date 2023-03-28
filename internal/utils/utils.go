@@ -1,12 +1,12 @@
 package utils
 
 import (
-	"flag"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/handlers"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"os"
 	"strconv"
+	"time"
 )
 
 func NewRouter(storage handlers.MetricRepository) chi.Router {
@@ -28,54 +28,36 @@ func NewRouter(storage handlers.MetricRepository) chi.Router {
 	return router
 }
 
-func updateIntFlag(flagName string, defaultValue int64, usage string) int64 {
-	fl := flag.Int64(flagName, defaultValue, usage)
-	flag.Parse()
-	return *fl
-}
-
-func UpdateIntVar(envName, flagName string, defaultValue int64, usage string) int64 {
+func UpdateDurVar(envName string, fl *time.Duration) time.Duration {
 	value, ok := os.LookupEnv(envName)
 	if !ok {
-		return updateIntFlag(flagName, defaultValue, usage)
+		return *fl
 	}
 
-	result, err := strconv.ParseInt(value, 10, 64)
+	result, err := strconv.Atoi(value)
 	if err != nil {
-		return updateIntFlag(flagName, defaultValue, usage)
+		return *fl
 	}
 
-	return result
+	return time.Duration(result) * time.Second
 }
 
 const (
 	DefaultAddress = "127.0.0.1:8080"
 )
 
-func updateStringFlag(flagName, defaultValue, usage string) string {
-	fl := flag.String(flagName, defaultValue, usage)
-	flag.Parse()
-	return *fl
-}
-
-func UpdateStringVar(envName, flagName, defaultValue, usage string) string {
+func UpdateStringVar(envName string, fl *string) string {
 	value, ok := os.LookupEnv(envName)
 	if !ok {
-		return updateStringFlag(flagName, defaultValue, usage)
+		return *fl
 	}
 	return value
 }
 
-func updateBoolFlag(flagName string, defaultValue bool, usage string) bool {
-	fl := flag.Bool(flagName, defaultValue, usage)
-	flag.Parse()
-	return *fl
-}
-
-func UpdateBoolVar(envName, flagName string, defaultValue bool, usage string) bool {
+func UpdateBoolVar(envName string, fl *bool) bool {
 	value, ok := os.LookupEnv(envName)
 	if !ok {
-		return updateBoolFlag(flagName, defaultValue, usage)
+		return *fl
 	}
 	return value == "true"
 }
