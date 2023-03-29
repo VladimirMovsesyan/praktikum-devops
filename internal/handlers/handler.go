@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type MetricRepository interface {
@@ -206,6 +208,7 @@ func PrintStorageHandler(storage MetricRepository) http.HandlerFunc {
 			case "counter":
 				result += fmt.Sprintf("%d", value.GetCounterValue())
 			}
+			rw.Header().Set("Content-Type", "text/html")
 			_, err := rw.Write([]byte(result))
 			if err != nil {
 				log.Println("Error: Couldn't write data to response!")
@@ -250,4 +253,35 @@ func PrintValueHandler(storage MetricRepository) http.HandlerFunc {
 
 		rw.WriteHeader(http.StatusOK)
 	}
+}
+
+type gzipWriter struct {
+	http.ResponseWriter
+	writer io.Writer
+}
+
+func (gw gzipWriter) Write(p []byte) (int, error) {
+	return gw.writer.Write(p)
+}
+
+func CompressHandle(next http.Handler) http.Handler {
+	return http.HandlerFunc(
+		func(rw http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+				next.ServeHTTP(rw, r)
+				return
+			}
+
+			newWriter := gzip.NewWriter(rw)
+			defer newWriter.Close()
+
+			writer := gzipWriter{
+				ResponseWriter: rw,
+				writer:         newWriter,
+			}
+
+			writer.Header().Set("Content-Encoding", "gzip")
+			next.ServeHTTP(writer, r)
+		},
+	)
 }

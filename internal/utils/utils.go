@@ -11,7 +11,13 @@ import (
 
 func NewRouter(storage handlers.MetricRepository) chi.Router {
 	router := chi.NewRouter()
-	router.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
+	router.Use(
+		middleware.RequestID,
+		middleware.RealIP,
+		middleware.Logger,
+		middleware.Recoverer,
+		handlers.CompressHandle,
+	)
 
 	router.Get("/", handlers.PrintStorageHandler(storage))
 
