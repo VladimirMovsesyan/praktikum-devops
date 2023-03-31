@@ -76,9 +76,11 @@ func NewMetrics() *Metrics {
 }
 
 func UpdateMetrics(metrics *Metrics) {
+	log.Println("reading MemStats")
 	runtimeMetrics := runtime.MemStats{}
 	runtime.ReadMemStats(&runtimeMetrics)
 
+	log.Println("updating metrics")
 	metrics.pollCounter++
 	metrics.MetricSlice = []Metric{
 		NewMetricGauge("Alloc", Gauge(runtimeMetrics.Alloc)),

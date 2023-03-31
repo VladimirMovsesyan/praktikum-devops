@@ -63,7 +63,7 @@ func main() {
 			//Sending metrics
 			go clients.MetricsUpload(mtrcs, flAddr)
 		case sig := <-signals:
-			log.Println(sig.String())
+			log.Println("Got signal:", sig.String())
 			return
 		}
 	}

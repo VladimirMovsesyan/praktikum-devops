@@ -64,6 +64,7 @@ func main() {
 	)
 
 	if restore {
+		log.Println("restoring data from", storeFilePath)
 		err := cache.ImportData(storeFilePath, storage)
 		if err != nil {
 			log.Println(err)
@@ -72,6 +73,7 @@ func main() {
 	}
 
 	go func() {
+		log.Println("Listening:", address)
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatal("HTTP server ListenAndServe:", err)
 		}
@@ -83,20 +85,21 @@ func main() {
 	for {
 		select {
 		case sig := <-signals:
-			log.Println(sig.String())
+			log.Println("Got signal:", sig.String())
 
 			if err := server.Shutdown(context.Background()); err != nil {
 				log.Println("HTTP server Shutdown:", err)
 			}
 
+			log.Println("exporting data after shutdown")
 			err := cache.ExportData(storeFilePath, storage)
 			if err != nil {
 				log.Println(err)
-				return
 			}
 
 			return
 		case <-storeInterval.C:
+			log.Println("normal exporting data")
 			err := cache.ExportData(storeFilePath, storage)
 			if err != nil {
 				log.Println(err)
