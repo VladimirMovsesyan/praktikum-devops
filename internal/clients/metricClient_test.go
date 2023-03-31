@@ -40,7 +40,7 @@ func TestMetricsUpload(t *testing.T) {
 				metricUpload(server.URL, metric)
 			}
 
-			storageMetrics := storage.GetMetrics()
+			storageMetrics := storage.GetMetricsMap()
 			for _, value := range mtrcs.MetricSlice {
 				require.Equal(t, value, storageMetrics[value.GetName()])
 			}

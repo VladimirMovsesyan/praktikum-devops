@@ -15,7 +15,8 @@ import (
 )
 
 type MetricRepository interface {
-	GetMetrics() map[string]metrics.Metric
+	GetMetricsMap() map[string]metrics.Metric
+	GetMetric(name string) (metrics.Metric, error)
 	Update(metrics.Metric)
 }
 
@@ -168,10 +169,9 @@ func JSONPrintHandler(storage MetricRepository) http.HandlerFunc {
 			return
 		}
 
-		storageMap := storage.GetMetrics()
-		metric, ok := storageMap[jsonMetric.ID]
-		if !ok {
-			log.Println("Metric not found!")
+		metric, err := storage.GetMetric(jsonMetric.ID)
+		if err != nil {
+			log.Println(err)
 			rw.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -199,7 +199,7 @@ func JSONPrintHandler(storage MetricRepository) http.HandlerFunc {
 
 func PrintStorageHandler(storage MetricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		mtrcs := storage.GetMetrics()
+		mtrcs := storage.GetMetricsMap()
 		for _, value := range mtrcs {
 			result := value.GetKind() + " " + value.GetName() + " "
 			switch value.GetKind() {
@@ -224,10 +224,9 @@ func PrintValueHandler(storage MetricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		kind := chi.URLParam(r, "kind")
 		name := chi.URLParam(r, "name")
-		mtrcs := storage.GetMetrics()
-		value, ok := mtrcs[name]
 
-		if !ok || value.GetKind() != kind {
+		value, err := storage.GetMetric(name)
+		if err != nil || value.GetKind() != kind {
 			rw.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -244,7 +243,7 @@ func PrintValueHandler(storage MetricRepository) http.HandlerFunc {
 			return
 		}
 
-		_, err := rw.Write([]byte(result))
+		_, err = rw.Write([]byte(result))
 		if err != nil {
 			log.Println("Error: Couldn't write data to response!")
 			rw.WriteHeader(http.StatusInternalServerError)

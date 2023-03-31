@@ -42,7 +42,7 @@ func TestMemStorage_GetMetrics(t *testing.T) {
 			ms := &MemStorage{
 				mtrcs: tt.fields.mtrcs,
 			}
-			assert.Equal(t, tt.want, ms.GetMetrics())
+			assert.Equal(t, tt.want, ms.GetMetricsMap())
 		})
 	}
 }

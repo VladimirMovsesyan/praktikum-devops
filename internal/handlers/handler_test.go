@@ -113,7 +113,7 @@ func TestUpdateStorageHandler(t *testing.T) {
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 			if tt.want.statusCode == http.StatusOK {
-				assert.Equal(t, tt.want.mtrcs, tt.args.storage.GetMetrics())
+				assert.Equal(t, tt.want.mtrcs, tt.args.storage.GetMetricsMap())
 			}
 		})
 	}
