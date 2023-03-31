@@ -27,7 +27,7 @@ var (
 	flRestore       *bool
 )
 
-func init() {
+func parseFlags() {
 	log.Println("server init...")
 	flAddr = flag.String("a", utils.DefaultAddress, "Server IP address")           // ADDRESS
 	flStoreInterval = flag.Duration("i", defaultStore, "Interval of storing data") // STORE_INTERVAL
@@ -37,6 +37,7 @@ func init() {
 }
 
 func main() {
+	parseFlags()
 	storage := repository.NewMemStorage()
 	router := utils.NewRouter(storage)
 	address := utils.UpdateStringVar(

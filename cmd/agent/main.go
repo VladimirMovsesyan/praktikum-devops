@@ -23,7 +23,7 @@ var (
 	flReport *time.Duration // REPORT_INTERVAL
 )
 
-func init() {
+func parseFlags() {
 	log.Println("agent init...")
 	flAddr = flag.String("a", utils.DefaultAddress, "Server IP address")          // ADDRESS
 	flPoll = flag.Duration("p", defaultPoll, "Interval of polling metrics")       // POLL_INTERVAL
@@ -32,6 +32,7 @@ func init() {
 }
 
 func main() {
+	parseFlags()
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
