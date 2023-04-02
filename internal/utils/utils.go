@@ -17,6 +17,7 @@ func NewRouter(storage handlers.MetricRepository) chi.Router {
 		middleware.Logger,
 		middleware.Recoverer,
 		handlers.CompressHandle,
+		handlers.DecompressHandle,
 	)
 
 	router.Get("/", handlers.PrintStorageHandler(storage))

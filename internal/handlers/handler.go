@@ -284,3 +284,25 @@ func CompressHandle(next http.Handler) http.Handler {
 		},
 	)
 }
+
+func DecompressHandle(next http.Handler) http.Handler {
+	return http.HandlerFunc(
+		func(rw http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+				next.ServeHTTP(rw, r)
+				return
+			}
+
+			reader, err := gzip.NewReader(r.Body)
+			if err != nil {
+				log.Println(err)
+				rw.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			defer reader.Close()
+
+			r.Body = reader
+			next.ServeHTTP(rw, r)
+		},
+	)
+}
