@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/go-chi/chi/v5"
@@ -60,6 +61,26 @@ type JSONMetric struct {
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
 	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+}
+
+func NewJSONMetric(metric metrics.Metric) (*JSONMetric, error) {
+	jsonMetric := &JSONMetric{
+		ID:    metric.GetName(),
+		MType: metric.GetKind(),
+	}
+
+	switch metric.GetKind() {
+	case "gauge":
+		value := float64(metric.GetGaugeValue())
+		jsonMetric.Value = &value
+	case "counter":
+		delta := int64(metric.GetCounterValue())
+		jsonMetric.Delta = &delta
+	default:
+		return nil, errors.New("not implemented type")
+	}
+
+	return jsonMetric, nil
 }
 
 func JSONUpdateHandler(storage MetricRepository) http.HandlerFunc {
