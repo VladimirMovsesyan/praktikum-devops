@@ -3,11 +3,17 @@ package main
 import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/clients"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
+	"github.com/VladimirMovsesyan/praktikum-devops/internal/utils"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+)
+
+const (
+	defaultPoll   = 2
+	defaultReport = 10
 )
 
 func main() {
@@ -18,8 +24,18 @@ func main() {
 	mtrcs := metrics.NewMetrics()
 
 	// Creating poll and report intervals
-	pollInterval := time.NewTicker(2 * time.Second)
-	reportInterval := time.NewTicker(10 * time.Second)
+	pollInterval := time.NewTicker(
+		utils.UpdateInterval(
+			"POLL_INTERVAL",
+			defaultPoll,
+		) * time.Second,
+	)
+	reportInterval := time.NewTicker(
+		utils.UpdateInterval(
+			"REPORT_INTERVAL",
+			defaultReport,
+		) * time.Second,
+	)
 
 	// Agent's process
 	for {

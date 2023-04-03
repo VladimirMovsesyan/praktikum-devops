@@ -14,7 +14,8 @@ import (
 func main() {
 	storage := repository.NewMemStorage()
 	router := utils.NewRouter(storage)
-	server := http.Server{Addr: ":8080", Handler: router}
+	address := utils.UpdateAddress("ADDRESS", utils.DefaultAddress)
+	server := http.Server{Addr: address, Handler: router}
 
 	go func() {
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
