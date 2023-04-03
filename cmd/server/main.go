@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/cache"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/utils"
@@ -14,27 +15,52 @@ import (
 )
 
 const (
-	defaultStore     = 300
+	defaultStore     = 300 * time.Second
 	defaultStoreFile = "/tmp/devops-metrics-db.json"
 	defaultRestore   = true
 )
 
+var (
+	flAddr          *string
+	flStoreInterval *time.Duration
+	flStoreFile     *string
+	flRestore       *bool
+)
+
+func init() {
+	log.Println("server init...")
+	flAddr = flag.String("a", utils.DefaultAddress, "Server IP address")           // ADDRESS
+	flStoreInterval = flag.Duration("i", defaultStore, "Interval of storing data") // STORE_INTERVAL
+	flStoreFile = flag.String("f", defaultStoreFile, "Path to storage file")       // STORE_FILE
+	flRestore = flag.Bool("r", defaultRestore, "Is need to restore storage")       // RESTORE
+	flag.Parse()
+}
+
 func main() {
 	storage := repository.NewMemStorage()
 	router := utils.NewRouter(storage)
-	address := utils.UpdateStringEnv("ADDRESS", utils.DefaultAddress)
+	address := utils.UpdateStringVar(
+		"ADDRESS",
+		flAddr,
+	)
 	server := http.Server{Addr: address, Handler: router}
 
 	storeInterval := time.NewTicker(
-		time.Duration(
-			utils.UpdateIntEnv(
-				"STORE_INTERVAL",
-				defaultStore,
-			),
-		) * time.Second,
+		utils.UpdateDurVar(
+			"STORE_INTERVAL",
+			flStoreInterval,
+		),
 	)
-	storeFilePath := utils.UpdateStringEnv("STORE_FILE", defaultStoreFile)
-	restore := utils.UpdateBoolEnv("RESTORE", defaultRestore)
+
+	storeFilePath := utils.UpdateStringVar(
+		"STORE_FILE",
+		flStoreFile,
+	)
+
+	restore := utils.UpdateBoolVar(
+		"RESTORE",
+		flRestore,
+	)
 
 	if restore {
 		err := cache.ImportData(storeFilePath, storage)

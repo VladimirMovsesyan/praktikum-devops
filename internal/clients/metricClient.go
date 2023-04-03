@@ -21,11 +21,16 @@ func NewMetricsClient() *http.Client {
 	return client
 }
 
-func MetricsUpload(mtrcs *metrics.Metrics) {
-	address := defaultProtocol + utils.UpdateStringEnv("ADDRESS", utils.DefaultAddress)
+func MetricsUpload(mtrcs *metrics.Metrics, flAddr *string) {
+	address := defaultProtocol + utils.UpdateStringVar(
+		"ADDRESS",
+		flAddr,
+	)
+
 	for _, metric := range mtrcs.MetricSlice {
 		metricUpload(address, metric)
 	}
+
 	mtrcs.ResetPollCounter()
 }
 
