@@ -27,6 +27,7 @@ func MetricsUpload(mtrcs *metrics.Metrics, flAddr *string) {
 		flAddr,
 	)
 
+	log.Println("sending metrics to:", address)
 	for _, metric := range mtrcs.MetricSlice {
 		metricUpload(address, metric)
 	}

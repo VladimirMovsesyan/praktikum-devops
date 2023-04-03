@@ -2,8 +2,9 @@ package utils
 
 import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/handlers"
+	"github.com/VladimirMovsesyan/praktikum-devops/internal/middleware"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"os"
 	"strconv"
 	"time"
@@ -11,7 +12,14 @@ import (
 
 func NewRouter(storage handlers.MetricRepository) chi.Router {
 	router := chi.NewRouter()
-	router.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
+	router.Use(
+		chiMiddleware.RequestID,
+		chiMiddleware.RealIP,
+		chiMiddleware.Logger,
+		chiMiddleware.Recoverer,
+		middleware.Compress,
+		middleware.Decompress,
+	)
 
 	router.Get("/", handlers.PrintStorageHandler(storage))
 

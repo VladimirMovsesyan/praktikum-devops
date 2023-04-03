@@ -10,7 +10,7 @@ import (
 )
 
 type MetricRepository interface {
-	GetMetrics() map[string]metrics.Metric
+	GetMetricsMap() map[string]metrics.Metric
 	Update(metrics.Metric)
 }
 
@@ -92,7 +92,7 @@ func NewExporter(filename string) (*Exporter, error) {
 }
 
 func (exp *Exporter) ExportStorage(storage MetricRepository) error {
-	metricMap := storage.GetMetrics()
+	metricMap := storage.GetMetricsMap()
 
 	for _, value := range metricMap {
 		err := exp.exportEvent(value)

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"log"
 	"sync"
@@ -17,8 +18,20 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (ms *MemStorage) GetMetrics() map[string]metrics.Metric {
+func (ms *MemStorage) GetMetricsMap() map[string]metrics.Metric {
 	return ms.mtrcs
+}
+
+func (ms *MemStorage) GetMetric(name string) (metrics.Metric, error) {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+
+	metric, ok := ms.mtrcs[name]
+	if !ok {
+		return metrics.Metric{}, errors.New("metric not found")
+	}
+
+	return metric, nil
 }
 
 func (ms *MemStorage) Update(newMetric metrics.Metric) {
