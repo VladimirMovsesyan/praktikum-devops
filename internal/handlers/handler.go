@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/go-chi/chi/v5"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -49,6 +51,125 @@ func UpdateStorageHandler(storage MetricRepository) http.HandlerFunc {
 			return
 		}
 		storage.Update(newMetric)
+		rw.WriteHeader(http.StatusOK)
+	}
+}
+
+type JSONMetric struct {
+	ID    string   `json:"id"`              // имя метрики
+	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
+	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
+	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+}
+
+func JSONUpdateHandler(storage MetricRepository) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		bytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Println(err.Error())
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		defer r.Body.Close()
+		var jsonMetric JSONMetric
+
+		err = json.Unmarshal(bytes, &jsonMetric)
+		if err != nil {
+			log.Println(err.Error())
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		switch jsonMetric.MType {
+		case "gauge":
+			storage.Update(
+				metrics.NewMetricGauge(
+					jsonMetric.ID,
+					metrics.Gauge(*jsonMetric.Value),
+				),
+			)
+		case "counter":
+			storage.Update(
+				metrics.NewMetricCounter(
+					jsonMetric.ID,
+					metrics.Counter(*jsonMetric.Delta),
+				),
+			)
+		default:
+			log.Fatal("Not implemented")
+		}
+
+		rw.Header().Add("Content-Type", "application/json")
+
+		_, err = rw.Write(bytes)
+		if err != nil {
+			log.Println(err.Error())
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		rw.WriteHeader(http.StatusOK)
+	}
+}
+
+func updateJSONMetric(jsonMetric *JSONMetric, metric metrics.Metric) {
+	switch metric.GetKind() {
+	case "gauge":
+		value := float64(metric.GetGaugeValue())
+		jsonMetric.Value = &value
+	case "counter":
+		delta := int64(metric.GetCounterValue())
+		jsonMetric.Delta = &delta
+	default:
+		log.Fatal("Not implemented")
+	}
+}
+
+func JSONPrintHandler(storage MetricRepository) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		bytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Println(err.Error())
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		defer r.Body.Close()
+		var jsonMetric JSONMetric
+
+		err = json.Unmarshal(bytes, &jsonMetric)
+		if err != nil {
+			log.Println(err.Error())
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		storageMap := storage.GetMetrics()
+		metric, ok := storageMap[jsonMetric.ID]
+		if !ok {
+			log.Println("Metric not found!")
+			rw.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		updateJSONMetric(&jsonMetric, metric)
+
+		marshal, err := json.Marshal(jsonMetric)
+		if err != nil {
+			log.Println(err.Error())
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		rw.Header().Add("Content-Type", "application/json")
+		_, err = rw.Write(marshal)
+		if err != nil {
+			log.Println(err.Error())
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		rw.WriteHeader(http.StatusOK)
 	}
 }
