@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/handlers"
+	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/middleware"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
@@ -10,7 +11,13 @@ import (
 	"time"
 )
 
-func NewRouter(storage handlers.MetricRepository) chi.Router {
+type metricRepository interface {
+	GetMetricsMap() map[string]metrics.Metric
+	GetMetric(name string) (metrics.Metric, error)
+	Update(metrics.Metric)
+}
+
+func NewRouter(storage metricRepository) chi.Router {
 	router := chi.NewRouter()
 	router.Use(
 		chiMiddleware.RequestID,

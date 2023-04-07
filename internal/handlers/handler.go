@@ -12,13 +12,13 @@ import (
 	"strconv"
 )
 
-type MetricRepository interface {
+type metricRepository interface {
 	GetMetricsMap() map[string]metrics.Metric
 	GetMetric(name string) (metrics.Metric, error)
 	Update(metrics.Metric)
 }
 
-func UpdateStorageHandler(storage MetricRepository) http.HandlerFunc {
+func UpdateStorageHandler(storage metricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		kind := chi.URLParam(r, "kind")
 		name := chi.URLParam(r, "name")
@@ -84,7 +84,7 @@ func NewJSONMetric(metric metrics.Metric) (*JSONMetric, error) {
 	return jsonMetric, nil
 }
 
-func JSONUpdateHandler(storage MetricRepository) http.HandlerFunc {
+func JSONUpdateHandler(storage metricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		bytes, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -148,7 +148,7 @@ func updateJSONMetric(jsonMetric *JSONMetric, metric metrics.Metric) {
 	}
 }
 
-func JSONPrintHandler(storage MetricRepository) http.HandlerFunc {
+func JSONPrintHandler(storage metricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		bytes, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -195,7 +195,7 @@ func JSONPrintHandler(storage MetricRepository) http.HandlerFunc {
 	}
 }
 
-func PrintStorageHandler(storage MetricRepository) http.HandlerFunc {
+func PrintStorageHandler(storage metricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		mtrcs := storage.GetMetricsMap()
 		for _, value := range mtrcs {
@@ -218,7 +218,7 @@ func PrintStorageHandler(storage MetricRepository) http.HandlerFunc {
 	}
 }
 
-func PrintValueHandler(storage MetricRepository) http.HandlerFunc {
+func PrintValueHandler(storage metricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		kind := chi.URLParam(r, "kind")
 		name := chi.URLParam(r, "name")
