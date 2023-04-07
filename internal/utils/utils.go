@@ -17,7 +17,7 @@ type metricRepository interface {
 	Update(metrics.Metric)
 }
 
-func NewRouter(storage metricRepository) chi.Router {
+func NewRouter(storage metricRepository, key string) chi.Router {
 	router := chi.NewRouter()
 	router.Use(
 		chiMiddleware.RequestID,
@@ -31,13 +31,13 @@ func NewRouter(storage metricRepository) chi.Router {
 	router.Get("/", handlers.PrintStorageHandler(storage))
 
 	router.Route("/value", func(r chi.Router) {
-		r.Post("/", handlers.JSONPrintHandler(storage))
-		r.Get("/{kind}/{name}", handlers.PrintValueHandler(storage))
+		r.Post("/", handlers.JSONPrintHandler(storage, key))
+		r.Get("/{kind}/{name}", handlers.PrintValueHandler(storage, key))
 	})
 
 	router.Route("/update", func(r chi.Router) {
-		r.Post("/", handlers.JSONUpdateHandler(storage))
-		r.Post("/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage))
+		r.Post("/", handlers.JSONUpdateHandler(storage, key))
+		r.Post("/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage, key))
 	})
 
 	return router

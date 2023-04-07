@@ -102,7 +102,7 @@ func TestUpdateStorageHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			router := chi.NewRouter()
-			router.Post("/update/{kind}/{name}/{value}", UpdateStorageHandler(tt.args.storage))
+			router.Post("/update/{kind}/{name}/{value}", UpdateStorageHandler(tt.args.storage, ""))
 
 			request := httptest.NewRequest(http.MethodPost, tt.target, nil)
 			recorder := httptest.NewRecorder()
@@ -235,7 +235,7 @@ func TestPrintValueHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			router := chi.NewRouter()
-			router.Get("/value/{kind}/{name}", PrintValueHandler(tt.storage))
+			router.Get("/value/{kind}/{name}", PrintValueHandler(tt.storage, ""))
 
 			request := httptest.NewRequest(http.MethodGet, tt.target, nil)
 			recorder := httptest.NewRecorder()

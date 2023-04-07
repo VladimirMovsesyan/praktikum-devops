@@ -28,7 +28,7 @@ func TestMetricsUpload(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := repository.NewMemStorage()
 			router := chi.NewRouter()
-			router.Post("/update/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage))
+			router.Post("/update/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage, ""))
 
 			server := httptest.NewServer(router)
 			defer server.Close()
@@ -37,7 +37,7 @@ func TestMetricsUpload(t *testing.T) {
 			metrics.UpdateMetrics(mtrcs)
 
 			for _, metric := range mtrcs.MetricSlice {
-				metricUpload(server.URL, metric)
+				metricUpload(server.URL, metric, "")
 			}
 
 			storageMetrics := storage.GetMetricsMap()

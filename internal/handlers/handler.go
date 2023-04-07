@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/VladimirMovsesyan/praktikum-devops/internal/hash"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/go-chi/chi/v5"
 	"io"
@@ -18,7 +19,12 @@ type metricRepository interface {
 	Update(metrics.Metric)
 }
 
-func UpdateStorageHandler(storage metricRepository) http.HandlerFunc {
+const (
+	hashGaugeFormat   = "%s:%s:%f"
+	hashCounterFormat = "%s:%s:%d"
+)
+
+func UpdateStorageHandler(storage metricRepository, key string) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		kind := chi.URLParam(r, "kind")
 		name := chi.URLParam(r, "name")
@@ -31,6 +37,8 @@ func UpdateStorageHandler(storage metricRepository) http.HandlerFunc {
 			return
 		}
 
+		var hashData string
+
 		switch kind {
 		case "gauge":
 			value, err := strconv.ParseFloat(value, 64)
@@ -40,6 +48,7 @@ func UpdateStorageHandler(storage metricRepository) http.HandlerFunc {
 				return
 			}
 			newMetric = metrics.NewMetricGauge(name, metrics.Gauge(value))
+			hashData = fmt.Sprintf(hashGaugeFormat, name, kind, value)
 		case "counter":
 			value, err := strconv.Atoi(value)
 			if err != nil {
@@ -48,10 +57,21 @@ func UpdateStorageHandler(storage metricRepository) http.HandlerFunc {
 				return
 			}
 			newMetric = metrics.NewMetricCounter(name, metrics.Counter(value))
+			hashData = fmt.Sprintf(hashCounterFormat, name, kind, value)
 		default:
 			rw.WriteHeader(http.StatusNotImplemented)
 			return
 		}
+
+		hashHeader := r.Header.Get("Hash")
+		if key != "" {
+			if !hash.Valid(hashHeader, hashData, key) {
+				rw.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			rw.Header().Set("Hash", hash.Get(hashData, key))
+		}
+
 		storage.Update(newMetric)
 		rw.WriteHeader(http.StatusOK)
 	}
@@ -62,6 +82,7 @@ type JSONMetric struct {
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
 	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+	Hash  string   `json:"hash,omitempty"`  // значение хеш-функции
 }
 
 func NewJSONMetric(metric metrics.Metric) (*JSONMetric, error) {
@@ -84,7 +105,7 @@ func NewJSONMetric(metric metrics.Metric) (*JSONMetric, error) {
 	return jsonMetric, nil
 }
 
-func JSONUpdateHandler(storage metricRepository) http.HandlerFunc {
+func JSONUpdateHandler(storage metricRepository, key string) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		bytes, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -103,27 +124,38 @@ func JSONUpdateHandler(storage metricRepository) http.HandlerFunc {
 			return
 		}
 
+		var metric metrics.Metric
+		var hashData string
+
 		switch jsonMetric.MType {
 		case "gauge":
-			storage.Update(
-				metrics.NewMetricGauge(
-					jsonMetric.ID,
-					metrics.Gauge(*jsonMetric.Value),
-				),
+			metric = metrics.NewMetricGauge(
+				jsonMetric.ID,
+				metrics.Gauge(*jsonMetric.Value),
 			)
+			hashData = fmt.Sprintf(hashGaugeFormat, metric.GetName(), metric.GetKind(), metric.GetGaugeValue())
 		case "counter":
-			storage.Update(
-				metrics.NewMetricCounter(
-					jsonMetric.ID,
-					metrics.Counter(*jsonMetric.Delta),
-				),
+			metric = metrics.NewMetricCounter(
+				jsonMetric.ID,
+				metrics.Counter(*jsonMetric.Delta),
 			)
+			hashData = fmt.Sprintf(hashCounterFormat, metric.GetName(), metric.GetKind(), metric.GetCounterValue())
 		default:
 			log.Fatal("Not implemented")
 		}
 
-		rw.Header().Add("Content-Type", "application/json")
+		hashHeader := jsonMetric.Hash
+		if key != "" {
+			if !hash.Valid(hashHeader, hashData, key) {
+				rw.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			rw.Header().Set("Hash", hash.Get(hashData, key))
+		}
 
+		storage.Update(metric)
+
+		rw.Header().Add("Content-Type", "application/json")
 		_, err = rw.Write(bytes)
 		if err != nil {
 			log.Println(err.Error())
@@ -148,7 +180,7 @@ func updateJSONMetric(jsonMetric *JSONMetric, metric metrics.Metric) {
 	}
 }
 
-func JSONPrintHandler(storage metricRepository) http.HandlerFunc {
+func JSONPrintHandler(storage metricRepository, key string) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		bytes, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -175,6 +207,28 @@ func JSONPrintHandler(storage metricRepository) http.HandlerFunc {
 		}
 
 		updateJSONMetric(&jsonMetric, metric)
+
+		var hashData string
+
+		switch jsonMetric.MType {
+		case "gauge":
+			hashData = fmt.Sprintf(hashGaugeFormat, jsonMetric.ID, jsonMetric.MType, *jsonMetric.Value)
+		case "counter":
+			hashData = fmt.Sprintf(hashCounterFormat, jsonMetric.ID, jsonMetric.MType, *jsonMetric.Delta)
+		default:
+			log.Fatal("Not implemented")
+		}
+
+		jsonMetric.Hash = hash.Get(hashData, key)
+		hashHeader := jsonMetric.Hash
+		if key != "" {
+			if !hash.Valid(hashHeader, hashData, key) {
+				log.Println(hashData)
+				rw.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			rw.Header().Set("Hash", hash.Get(hashData, key))
+		}
 
 		marshal, err := json.Marshal(jsonMetric)
 		if err != nil {
@@ -218,7 +272,7 @@ func PrintStorageHandler(storage metricRepository) http.HandlerFunc {
 	}
 }
 
-func PrintValueHandler(storage metricRepository) http.HandlerFunc {
+func PrintValueHandler(storage metricRepository, key string) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		kind := chi.URLParam(r, "kind")
 		name := chi.URLParam(r, "name")
@@ -230,15 +284,27 @@ func PrintValueHandler(storage metricRepository) http.HandlerFunc {
 		}
 
 		var result string
+		var hashData string
 
 		switch kind {
 		case "gauge":
 			result = fmt.Sprintf("%.3f", value.GetGaugeValue())
+			hashData = fmt.Sprintf(hashGaugeFormat, name, kind, value.GetGaugeValue())
 		case "counter":
 			result = fmt.Sprintf("%d", value.GetCounterValue())
+			hashData = fmt.Sprintf(hashCounterFormat, name, kind, value.GetCounterValue())
 		default:
 			rw.WriteHeader(http.StatusNotImplemented)
 			return
+		}
+
+		hashHeader := r.Header.Get("Hash")
+		if key != "" {
+			if !hash.Valid(hashHeader, hashData, key) {
+				rw.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			rw.Header().Set("Hash", hash.Get(hashData, key))
 		}
 
 		_, err = rw.Write([]byte(result))
