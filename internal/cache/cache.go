@@ -5,22 +5,13 @@ import (
 	"errors"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/handlers"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
+	"io"
 	"os"
 )
 
 type metricRepository interface {
 	GetMetricsMap() map[string]metrics.Metric
 	Update(metrics.Metric)
-}
-
-type jsonMetrics struct {
-	List []handlers.JSONMetric `json:"metrics"`
-}
-
-func newJSONMetrics(len int) jsonMetrics {
-	return jsonMetrics{
-		List: make([]handlers.JSONMetric, 0, len),
-	}
 }
 
 type importer struct {
@@ -41,15 +32,18 @@ func newImporter(filename string) (*importer, error) {
 }
 
 func (imp *importer) importStorage(storage metricRepository) error {
-	var jsonMtrcs jsonMetrics
+	for {
+		var jsonMetric handlers.JSONMetric
+		err := imp.decoder.Decode(&jsonMetric)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
 
-	err := imp.decoder.Decode(&jsonMtrcs)
-	if err != nil {
-		return err
-	}
-
-	for _, jsonMetric := range jsonMtrcs.List {
 		var metric metrics.Metric
+
 		switch jsonMetric.MType {
 		case "gauge":
 			metric = metrics.NewMetricGauge(jsonMetric.ID, metrics.Gauge(*jsonMetric.Value))
@@ -58,6 +52,7 @@ func (imp *importer) importStorage(storage metricRepository) error {
 		default:
 			return errors.New("not implemented type")
 		}
+
 		storage.Update(metric)
 	}
 
@@ -98,23 +93,25 @@ func newExporter(filename string) (*exporter, error) {
 
 func (exp *exporter) exportStorage(storage metricRepository) error {
 	metricMap := storage.GetMetricsMap()
-	jsonMtrcs := newJSONMetrics(len(metricMap))
 
 	for _, value := range metricMap {
-		jsonMetric, err := handlers.NewJSONMetric(value)
+		err := exp.exportEvent(value)
 		if err != nil {
 			return err
 		}
-
-		jsonMtrcs.List = append(jsonMtrcs.List, *jsonMetric)
 	}
 
-	err := exp.encoder.Encode(&jsonMtrcs)
+	return nil
+}
+
+func (exp *exporter) exportEvent(metric metrics.Metric) error {
+	jsonMetric, err := handlers.NewJSONMetric(metric)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	err = exp.encoder.Encode(&jsonMetric)
+	return err
 }
 
 func (exp *exporter) close() error {
