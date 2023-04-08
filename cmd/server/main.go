@@ -79,11 +79,13 @@ func main() {
 	)
 
 	if restore {
-		log.Println("restoring data from", storeFilePath)
-		err := cache.ImportData(storeFilePath, storage)
-		if err != nil {
-			log.Println(err)
-			return
+		if dbDsn == "" {
+			log.Println("restoring data from", storeFilePath)
+			err := cache.ImportData(storeFilePath, storage)
+			if err != nil {
+				log.Println(err)
+				return
+			}
 		}
 	}
 
