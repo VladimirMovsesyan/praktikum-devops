@@ -83,7 +83,7 @@ func main() {
 		err := cache.ImportData(storeFilePath, storage)
 		if err != nil {
 			log.Println(err)
-			return
+			//return
 		}
 	}
 
