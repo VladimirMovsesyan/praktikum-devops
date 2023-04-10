@@ -28,6 +28,7 @@ type dbMetric struct {
 }
 
 func (storage *PostgreStorage) GetMetricsMap() map[string]metrics.Metric {
+	storage.ensureTableExists()
 	metricsMap := make(map[string]metrics.Metric)
 
 	rows, err := storage.db.Query(`SELECT metric_name, metric_type, metric_delta, metric_value FROM metric`)
@@ -59,6 +60,7 @@ func (storage *PostgreStorage) GetMetricsMap() map[string]metrics.Metric {
 }
 
 func (storage *PostgreStorage) GetMetric(name string) (metrics.Metric, error) {
+	storage.ensureTableExists()
 	row := storage.db.QueryRow(
 		`SELECT metric_name, metric_type, metric_delta, metric_value FROM metric WHERE metric_name = $1`,
 		name,
@@ -87,6 +89,7 @@ func (storage *PostgreStorage) GetMetric(name string) (metrics.Metric, error) {
 }
 
 func (storage *PostgreStorage) Update(metric metrics.Metric) {
+	storage.ensureTableExists()
 	row := storage.db.QueryRow(`SELECT COUNT(*) FROM metric WHERE metric_name = $1`, metric.GetName())
 	if row.Err() != nil {
 		return
@@ -149,4 +152,17 @@ func (storage *PostgreStorage) updateMetric(metric metrics.Metric) {
 	default:
 		log.Fatal("not implemented")
 	}
+}
+
+const tableCreation string = `CREATE TABLE IF NOT EXISTS metric (
+    metric_name VARCHAR (50) PRIMARY KEY, 
+    metric_type VARCHAR (10) NOT NULL, 
+    metric_delta BIGINT, 
+    metric_value DOUBLE PRECISION, 
+    created_at TIMESTAMP NOT NULL, 
+    updated_at TIMESTAMP NOT NULL
+);`
+
+func (storage *PostgreStorage) ensureTableExists() {
+	_, _ = storage.db.Exec(tableCreation)
 }
