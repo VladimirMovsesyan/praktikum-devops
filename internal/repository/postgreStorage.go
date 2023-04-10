@@ -31,7 +31,7 @@ func (storage *PostgreStorage) GetMetricsMap() map[string]metrics.Metric {
 	metricsMap := make(map[string]metrics.Metric)
 
 	rows, err := storage.db.Query(`SELECT metric_name, metric_type, metric_delta, metric_value FROM metric`)
-	if err != nil {
+	if err != nil || rows.Err() != nil {
 		return nil
 	}
 
@@ -63,6 +63,9 @@ func (storage *PostgreStorage) GetMetric(name string) (metrics.Metric, error) {
 		`SELECT metric_name, metric_type, metric_delta, metric_value FROM metric WHERE metric_name = $1`,
 		name,
 	)
+	if row.Err() != nil {
+		return metrics.Metric{}, row.Err()
+	}
 
 	var dbObj dbMetric
 	err := row.Scan(&dbObj.name, &dbObj.mType, &dbObj.delta, &dbObj.value)
@@ -85,6 +88,9 @@ func (storage *PostgreStorage) GetMetric(name string) (metrics.Metric, error) {
 
 func (storage *PostgreStorage) Update(metric metrics.Metric) {
 	row := storage.db.QueryRow(`SELECT COUNT(*) FROM metric WHERE metric_name = $1`, metric.GetName())
+	if row.Err() != nil {
+		return
+	}
 
 	var count int
 	err := row.Scan(&count)
