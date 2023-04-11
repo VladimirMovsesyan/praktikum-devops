@@ -55,3 +55,9 @@ func (ms *MemStorage) Update(newMetric metrics.Metric) {
 		log.Println("Error: not implemented!")
 	}
 }
+
+func (ms *MemStorage) UpdateSlice(metrics []metrics.Metric) {
+	for _, metric := range metrics {
+		ms.Update(metric)
+	}
+}

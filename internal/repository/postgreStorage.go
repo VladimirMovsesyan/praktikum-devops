@@ -166,3 +166,98 @@ const tableCreation string = `CREATE TABLE IF NOT EXISTS metric (
 func (storage *PostgreStorage) ensureTableExists() {
 	_, _ = storage.db.Exec(tableCreation)
 }
+
+func (storage *PostgreStorage) UpdateSlice(metrics []metrics.Metric) {
+	tx, err := storage.db.Begin()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer tx.Rollback()
+
+	selectStmt, err := tx.Prepare(`SELECT COUNT(*) FROM metric WHERE metric_name = $1`)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	insertGaugeStmt, err := tx.Prepare(`INSERT INTO metric (metric_name, metric_type, metric_value, created_at, updated_at) 
+												VALUES ($1, 'gauge', $2, $3, $4)`)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	insertCounterStmt, err := tx.Prepare(`INSERT INTO metric (metric_name, metric_type, metric_delta, created_at, updated_at) 
+									VALUES ($1, 'counter', $2, $3, $4)`)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	updateGaugeStmt, err := tx.Prepare(
+		`UPDATE metric SET metric_value=$1, updated_at=$2 WHERE metric_name=$3`,
+	)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	updateCounterStmt, err := tx.Prepare(
+		`UPDATE metric SET metric_delta=metric_delta+$1, updated_at=$2 WHERE metric_name=$3`,
+	)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for _, metric := range metrics {
+		row := selectStmt.QueryRow(metric.GetName())
+		if row.Err() != nil {
+			log.Println(err)
+			return
+		}
+
+		var count int
+		err = row.Scan(&count)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		switch metric.GetKind() {
+		case "gauge":
+			if count == 0 {
+				_, err = insertGaugeStmt.Exec(metric.GetName(), metric.GetGaugeValue(), time.Now(), time.Now())
+				if err != nil {
+					log.Println(err)
+					return
+				}
+			} else {
+				_, err = updateGaugeStmt.Exec(metric.GetGaugeValue(), time.Now(), metric.GetName())
+				if err != nil {
+					log.Println(err)
+					return
+				}
+			}
+		case "counter":
+			if count == 0 {
+				_, err = insertCounterStmt.Exec(metric.GetName(), metric.GetCounterValue(), time.Now(), time.Now())
+				if err != nil {
+					log.Println(err)
+					return
+				}
+			} else {
+				_, err = updateCounterStmt.Exec(metric.GetCounterValue(), time.Now(), metric.GetName())
+				if err != nil {
+					log.Println(err)
+					return
+				}
+			}
+		default:
+			log.Fatal("not implemented")
+		}
+	}
+
+	tx.Commit()
+}
