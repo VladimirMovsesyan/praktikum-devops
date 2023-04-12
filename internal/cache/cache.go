@@ -35,7 +35,7 @@ func (imp *importer) importStorage(storage metricRepository) error {
 	for {
 		var jsonMetric handlers.JSONMetric
 		err := imp.decoder.Decode(&jsonMetric)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
