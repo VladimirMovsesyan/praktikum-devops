@@ -365,17 +365,9 @@ func PrintValueHandler(storage metricRepository, key string) http.HandlerFunc {
 	}
 }
 
-func PingDatabaseHandler(dbDSN string) http.HandlerFunc {
+func PingDatabaseHandler(db *sql.DB) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		db, err := sql.Open("postgres", dbDSN)
-		if err != nil {
-			log.Println("Couldn't create connection to database")
-			rw.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		defer db.Close()
-
-		err = db.Ping()
+		err := db.Ping()
 		if err != nil {
 			log.Println("Couldn't ping database")
 			rw.WriteHeader(http.StatusInternalServerError)

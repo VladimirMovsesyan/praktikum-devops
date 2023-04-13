@@ -12,11 +12,7 @@ type PostgreStorage struct {
 	db *sql.DB
 }
 
-func NewPostgreStorage(dbDSN string) *PostgreStorage {
-	db, err := sql.Open("postgres", dbDSN)
-	if err != nil {
-		return nil
-	}
+func NewPostgreStorage(db *sql.DB) *PostgreStorage {
 	return &PostgreStorage{db: db}
 }
 
