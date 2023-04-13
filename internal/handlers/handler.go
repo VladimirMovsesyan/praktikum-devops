@@ -19,7 +19,7 @@ type metricRepository interface {
 	GetMetricsMap() map[string]metrics.Metric
 	GetMetric(name string) (metrics.Metric, error)
 	Update(metrics.Metric)
-	UpdateSlice(metrics []metrics.Metric)
+	BatchUpdate(metrics []metrics.Metric)
 }
 
 const (
@@ -209,7 +209,7 @@ func MetricsUpdateHandler(storage metricRepository) http.HandlerFunc {
 
 			metricSlice = append(metricSlice, metric)
 		}
-		storage.UpdateSlice(metricSlice)
+		storage.BatchUpdate(metricSlice)
 		rw.WriteHeader(http.StatusOK)
 	}
 }

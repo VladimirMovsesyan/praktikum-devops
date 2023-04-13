@@ -167,7 +167,7 @@ func (storage *PostgreStorage) ensureTableExists() {
 	_, _ = storage.db.Exec(tableCreation)
 }
 
-func (storage *PostgreStorage) UpdateSlice(metrics []metrics.Metric) {
+func (storage *PostgreStorage) BatchUpdate(metrics []metrics.Metric) {
 	tx, err := storage.db.Begin()
 	if err != nil {
 		log.Println(err)

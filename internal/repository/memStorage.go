@@ -56,7 +56,7 @@ func (ms *MemStorage) Update(newMetric metrics.Metric) {
 	}
 }
 
-func (ms *MemStorage) UpdateSlice(metrics []metrics.Metric) {
+func (ms *MemStorage) BatchUpdate(metrics []metrics.Metric) {
 	for _, metric := range metrics {
 		ms.Update(metric)
 	}

@@ -15,7 +15,7 @@ type metricRepository interface {
 	GetMetricsMap() map[string]metrics.Metric
 	GetMetric(name string) (metrics.Metric, error)
 	Update(metrics.Metric)
-	UpdateSlice(metrics []metrics.Metric)
+	BatchUpdate(metrics []metrics.Metric)
 }
 
 func NewRouter(storage metricRepository, key, dbDsn string) chi.Router {
