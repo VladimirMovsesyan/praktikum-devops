@@ -15,6 +15,7 @@ type metricRepository interface {
 	GetMetricsMap() map[string]metrics.Metric
 	GetMetric(name string) (metrics.Metric, error)
 	Update(metrics.Metric)
+	UpdateSlice(metrics []metrics.Metric)
 }
 
 func NewRouter(storage metricRepository, key, dbDsn string) chi.Router {
@@ -41,6 +42,8 @@ func NewRouter(storage metricRepository, key, dbDsn string) chi.Router {
 	})
 
 	router.Get("/ping", handlers.PingDatabaseHandler(dbDsn))
+
+	router.Post("/updates/", handlers.MetricsUpdateHandler(storage))
 
 	return router
 }

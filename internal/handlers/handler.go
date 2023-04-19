@@ -19,6 +19,7 @@ type metricRepository interface {
 	GetMetricsMap() map[string]metrics.Metric
 	GetMetric(name string) (metrics.Metric, error)
 	Update(metrics.Metric)
+	UpdateSlice(metrics []metrics.Metric)
 }
 
 const (
@@ -165,6 +166,50 @@ func JSONUpdateHandler(storage metricRepository, key string) http.HandlerFunc {
 			return
 		}
 
+		rw.WriteHeader(http.StatusOK)
+	}
+}
+
+func MetricsUpdateHandler(storage metricRepository) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		bytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+
+		var jsonSlice []JSONMetric
+
+		err = json.Unmarshal(bytes, &jsonSlice)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		metricSlice := make([]metrics.Metric, 0, len(jsonSlice))
+
+		for _, jsonMetric := range jsonSlice {
+			var metric metrics.Metric
+
+			switch jsonMetric.MType {
+			case "gauge":
+				metric = metrics.NewMetricGauge(
+					jsonMetric.ID,
+					metrics.Gauge(*jsonMetric.Value),
+				)
+			case "counter":
+				metric = metrics.NewMetricCounter(
+					jsonMetric.ID,
+					metrics.Counter(*jsonMetric.Delta),
+				)
+			default:
+				log.Fatal("not implemented")
+			}
+
+			metricSlice = append(metricSlice, metric)
+		}
+		storage.UpdateSlice(metricSlice)
 		rw.WriteHeader(http.StatusOK)
 	}
 }
