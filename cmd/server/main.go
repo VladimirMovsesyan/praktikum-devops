@@ -21,10 +21,11 @@ const (
 )
 
 var (
-	flAddr          *string
-	flStoreInterval *time.Duration
-	flStoreFile     *string
-	flRestore       *bool
+	flAddr          *string        // ADDRESS
+	flStoreInterval *time.Duration // STORE_INTERVAL
+	flStoreFile     *string        // STORE_FILE
+	flRestore       *bool          // RESTORE
+	flKey           *string        // KEY
 )
 
 func parseFlags() {
@@ -33,13 +34,20 @@ func parseFlags() {
 	flStoreInterval = flag.Duration("i", defaultStore, "Interval of storing data") // STORE_INTERVAL
 	flStoreFile = flag.String("f", defaultStoreFile, "Path to storage file")       // STORE_FILE
 	flRestore = flag.Bool("r", defaultRestore, "Is need to restore storage")       // RESTORE
+	flKey = flag.String("k", "", "Hash key")                                       // KEY
 	flag.Parse()
 }
 
 func main() {
 	parseFlags()
 	storage := repository.NewMemStorage()
-	router := utils.NewRouter(storage)
+
+	key := utils.UpdateStringVar(
+		"KEY",
+		flKey,
+	)
+
+	router := utils.NewRouter(storage, key)
 	address := utils.UpdateStringVar(
 		"ADDRESS",
 		flAddr,

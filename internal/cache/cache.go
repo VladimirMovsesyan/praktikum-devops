@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-type MetricRepository interface {
+type metricRepository interface {
 	GetMetricsMap() map[string]metrics.Metric
 	Update(metrics.Metric)
 }
@@ -31,7 +31,7 @@ func NewImporter(filename string) (*Importer, error) {
 	}, nil
 }
 
-func (imp *Importer) Import(storage MetricRepository) error {
+func (imp *Importer) Import(storage metricRepository) error {
 	for {
 		var jsonMetric handlers.JSONMetric
 		err := imp.decoder.Decode(&jsonMetric)
@@ -59,7 +59,7 @@ func (imp *Importer) Import(storage MetricRepository) error {
 	return nil
 }
 
-func ImportData(filename string, storage MetricRepository) error {
+func ImportData(filename string, storage metricRepository) error {
 	importer, err := NewImporter(filename)
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func NewExporter(filename string) (*Exporter, error) {
 	}, nil
 }
 
-func (exp *Exporter) ExportStorage(storage MetricRepository) error {
+func (exp *Exporter) ExportStorage(storage metricRepository) error {
 	metricMap := storage.GetMetricsMap()
 
 	for _, value := range metricMap {
@@ -118,7 +118,7 @@ func (exp *Exporter) Close() error {
 	return exp.file.Close()
 }
 
-func ExportData(filename string, storage handlers.MetricRepository) error {
+func ExportData(filename string, storage metricRepository) error {
 	exporter, err := NewExporter(filename)
 	if err != nil {
 		return err

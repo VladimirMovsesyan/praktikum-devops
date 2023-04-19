@@ -21,6 +21,7 @@ var (
 	flAddr   *string        // ADDRESS
 	flPoll   *time.Duration // POLL_INTERVAL
 	flReport *time.Duration // REPORT_INTERVAL
+	flKey    *string        // KEY
 )
 
 func parseFlags() {
@@ -28,6 +29,7 @@ func parseFlags() {
 	flAddr = flag.String("a", utils.DefaultAddress, "Server IP address")          // ADDRESS
 	flPoll = flag.Duration("p", defaultPoll, "Interval of polling metrics")       // POLL_INTERVAL
 	flReport = flag.Duration("r", defaultReport, "Interval of reporting metrics") // REPORT_INTERVAL
+	flKey = flag.String("k", "", "Hash key")                                      // KEY
 	flag.Parse()
 }
 
@@ -53,6 +55,11 @@ func main() {
 		),
 	)
 
+	key := utils.UpdateStringVar(
+		"KEY",
+		flKey,
+	)
+
 	// Agent's process
 	for {
 		select {
@@ -61,7 +68,7 @@ func main() {
 			go metrics.UpdateMetrics(mtrcs)
 		case <-reportInterval.C:
 			//Sending metrics
-			go clients.MetricsUpload(mtrcs, flAddr)
+			go clients.MetricsUpload(mtrcs, flAddr, key)
 		case sig := <-signals:
 			log.Println("Got signal:", sig.String())
 			return

@@ -13,7 +13,7 @@ import (
 
 func TestUpdateStorageHandler(t *testing.T) {
 	type args struct {
-		storage MetricRepository
+		storage metricRepository
 	}
 
 	type want struct {
@@ -102,7 +102,7 @@ func TestUpdateStorageHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			router := chi.NewRouter()
-			router.Post("/update/{kind}/{name}/{value}", UpdateStorageHandler(tt.args.storage))
+			router.Post("/update/{kind}/{name}/{value}", UpdateStorageHandler(tt.args.storage, ""))
 
 			request := httptest.NewRequest(http.MethodPost, tt.target, nil)
 			recorder := httptest.NewRecorder()
@@ -133,7 +133,7 @@ func TestPrintStorageHandler(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		storage MetricRepository
+		storage metricRepository
 		want    want
 	}{
 		{
@@ -191,7 +191,7 @@ func TestPrintValueHandler(t *testing.T) {
 	tests := []struct {
 		name    string
 		target  string
-		storage MetricRepository
+		storage metricRepository
 		want    want
 	}{
 		{
@@ -235,7 +235,7 @@ func TestPrintValueHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			router := chi.NewRouter()
-			router.Get("/value/{kind}/{name}", PrintValueHandler(tt.storage))
+			router.Get("/value/{kind}/{name}", PrintValueHandler(tt.storage, ""))
 
 			request := httptest.NewRequest(http.MethodGet, tt.target, nil)
 			recorder := httptest.NewRecorder()

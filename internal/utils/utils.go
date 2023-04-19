@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/handlers"
+	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/middleware"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
@@ -10,7 +11,13 @@ import (
 	"time"
 )
 
-func NewRouter(storage handlers.MetricRepository) chi.Router {
+type metricRepository interface {
+	GetMetricsMap() map[string]metrics.Metric
+	GetMetric(name string) (metrics.Metric, error)
+	Update(metrics.Metric)
+}
+
+func NewRouter(storage metricRepository, key string) chi.Router {
 	router := chi.NewRouter()
 	router.Use(
 		chiMiddleware.RequestID,
@@ -24,13 +31,13 @@ func NewRouter(storage handlers.MetricRepository) chi.Router {
 	router.Get("/", handlers.PrintStorageHandler(storage))
 
 	router.Route("/value", func(r chi.Router) {
-		r.Post("/", handlers.JSONPrintHandler(storage))
-		r.Get("/{kind}/{name}", handlers.PrintValueHandler(storage))
+		r.Post("/", handlers.JSONPrintHandler(storage, key))
+		r.Get("/{kind}/{name}", handlers.PrintValueHandler(storage, key))
 	})
 
 	router.Route("/update", func(r chi.Router) {
-		r.Post("/", handlers.JSONUpdateHandler(storage))
-		r.Post("/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage))
+		r.Post("/", handlers.JSONUpdateHandler(storage, key))
+		r.Post("/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage, key))
 	})
 
 	return router
