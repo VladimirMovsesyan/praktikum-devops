@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/hash"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/go-chi/chi/v5"
+	_ "github.com/lib/pq"
 	"io"
 	"log"
 	"net/http"
@@ -310,6 +312,27 @@ func PrintValueHandler(storage metricRepository, key string) http.HandlerFunc {
 		_, err = rw.Write([]byte(result))
 		if err != nil {
 			log.Println("Error: Couldn't write data to response!")
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		rw.WriteHeader(http.StatusOK)
+	}
+}
+
+func PingDatabaseHandler(dbDSN string) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		db, err := sql.Open("postgres", dbDSN)
+		if err != nil {
+			log.Println("Couldn't create connection to database")
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer db.Close()
+
+		err = db.Ping()
+		if err != nil {
+			log.Println("Couldn't ping database")
 			rw.WriteHeader(http.StatusInternalServerError)
 			return
 		}

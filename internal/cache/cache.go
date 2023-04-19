@@ -14,24 +14,24 @@ type metricRepository interface {
 	Update(metrics.Metric)
 }
 
-type Importer struct {
+type importer struct {
 	file    *os.File
 	decoder *json.Decoder
 }
 
-func NewImporter(filename string) (*Importer, error) {
+func newImporter(filename string) (*importer, error) {
 	file, err := os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Importer{
+	return &importer{
 		file:    file,
 		decoder: json.NewDecoder(file),
 	}, nil
 }
 
-func (imp *Importer) Import(storage metricRepository) error {
+func (imp *importer) importStorage(storage metricRepository) error {
 	for {
 		var jsonMetric handlers.JSONMetric
 		err := imp.decoder.Decode(&jsonMetric)
@@ -60,38 +60,38 @@ func (imp *Importer) Import(storage metricRepository) error {
 }
 
 func ImportData(filename string, storage metricRepository) error {
-	importer, err := NewImporter(filename)
+	imp, err := newImporter(filename)
 	if err != nil {
 		return err
 	}
-	defer importer.Close()
+	defer imp.close()
 
-	err = importer.Import(storage)
+	err = imp.importStorage(storage)
 	return err
 }
 
-func (imp *Importer) Close() error {
+func (imp *importer) close() error {
 	return imp.file.Close()
 }
 
-type Exporter struct {
+type exporter struct {
 	file    *os.File
 	encoder *json.Encoder
 }
 
-func NewExporter(filename string) (*Exporter, error) {
+func newExporter(filename string) (*exporter, error) {
 	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Exporter{
+	return &exporter{
 		file:    file,
 		encoder: json.NewEncoder(file),
 	}, nil
 }
 
-func (exp *Exporter) ExportStorage(storage metricRepository) error {
+func (exp *exporter) exportStorage(storage metricRepository) error {
 	metricMap := storage.GetMetricsMap()
 
 	for _, value := range metricMap {
@@ -104,7 +104,7 @@ func (exp *Exporter) ExportStorage(storage metricRepository) error {
 	return nil
 }
 
-func (exp *Exporter) exportEvent(metric metrics.Metric) error {
+func (exp *exporter) exportEvent(metric metrics.Metric) error {
 	jsonMetric, err := handlers.NewJSONMetric(metric)
 	if err != nil {
 		return err
@@ -114,17 +114,17 @@ func (exp *Exporter) exportEvent(metric metrics.Metric) error {
 	return err
 }
 
-func (exp *Exporter) Close() error {
+func (exp *exporter) close() error {
 	return exp.file.Close()
 }
 
 func ExportData(filename string, storage metricRepository) error {
-	exporter, err := NewExporter(filename)
+	exp, err := newExporter(filename)
 	if err != nil {
 		return err
 	}
-	defer exporter.Close()
+	defer exp.close()
 
-	err = exporter.ExportStorage(storage)
+	err = exp.exportStorage(storage)
 	return err
 }

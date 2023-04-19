@@ -26,6 +26,7 @@ var (
 	flStoreFile     *string        // STORE_FILE
 	flRestore       *bool          // RESTORE
 	flKey           *string        // KEY
+	flDSN           *string        // DATABASE_DSN
 )
 
 func parseFlags() {
@@ -35,6 +36,7 @@ func parseFlags() {
 	flStoreFile = flag.String("f", defaultStoreFile, "Path to storage file")       // STORE_FILE
 	flRestore = flag.Bool("r", defaultRestore, "Is need to restore storage")       // RESTORE
 	flKey = flag.String("k", "", "Hash key")                                       // KEY
+	flDSN = flag.String("d", "", "Data source name")                               // DATABASE_DSN
 	flag.Parse()
 }
 
@@ -47,7 +49,12 @@ func main() {
 		flKey,
 	)
 
-	router := utils.NewRouter(storage, key)
+	dbDsn := utils.UpdateStringVar(
+		"DATABASE_DSN",
+		flDSN,
+	)
+
+	router := utils.NewRouter(storage, key, dbDsn)
 	address := utils.UpdateStringVar(
 		"ADDRESS",
 		flAddr,
@@ -76,7 +83,7 @@ func main() {
 		err := cache.ImportData(storeFilePath, storage)
 		if err != nil {
 			log.Println(err)
-			return
+			//return
 		}
 	}
 
