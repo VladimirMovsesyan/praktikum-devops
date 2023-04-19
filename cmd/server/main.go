@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/cache"
+	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/utils"
 	"log"
@@ -19,6 +20,12 @@ const (
 	defaultStoreFile = "/tmp/devops-metrics-db.json"
 	defaultRestore   = true
 )
+
+type metricRepository interface {
+	GetMetricsMap() map[string]metrics.Metric
+	GetMetric(name string) (metrics.Metric, error)
+	Update(metrics.Metric)
+}
 
 var (
 	flAddr          *string        // ADDRESS
@@ -42,19 +49,24 @@ func parseFlags() {
 
 func main() {
 	parseFlags()
-	storage := repository.NewMemStorage()
-
 	key := utils.UpdateStringVar(
 		"KEY",
 		flKey,
 	)
-
-	dbDsn := utils.UpdateStringVar(
+	dbDSN := utils.UpdateStringVar(
 		"DATABASE_DSN",
 		flDSN,
 	)
 
-	router := utils.NewRouter(storage, key, dbDsn)
+	var storage metricRepository
+	switch dbDSN {
+	case "":
+		storage = repository.NewMemStorage()
+	default:
+		storage = repository.NewPostgreStorage(dbDSN)
+	}
+
+	router := utils.NewRouter(storage, key, dbDSN)
 	address := utils.UpdateStringVar(
 		"ADDRESS",
 		flAddr,
@@ -78,12 +90,12 @@ func main() {
 		flRestore,
 	)
 
-	if restore {
+	if restore && dbDSN == "" {
 		log.Println("restoring data from", storeFilePath)
 		err := cache.ImportData(storeFilePath, storage)
 		if err != nil {
 			log.Println(err)
-			//return
+			return
 		}
 	}
 
@@ -106,19 +118,23 @@ func main() {
 				log.Println("HTTP server Shutdown:", err)
 			}
 
-			log.Println("exporting data after shutdown")
-			err := cache.ExportData(storeFilePath, storage)
-			if err != nil {
-				log.Println(err)
+			if dbDSN == "" {
+				log.Println("exporting data after shutdown")
+				err := cache.ExportData(storeFilePath, storage)
+				if err != nil {
+					log.Println(err)
+				}
 			}
 
 			return
 		case <-storeInterval.C:
-			log.Println("normal exporting data")
-			err := cache.ExportData(storeFilePath, storage)
-			if err != nil {
-				log.Println(err)
-				return
+			if dbDSN == "" {
+				log.Println("normal exporting data")
+				err := cache.ExportData(storeFilePath, storage)
+				if err != nil {
+					log.Println(err)
+					return
+				}
 			}
 		}
 	}
