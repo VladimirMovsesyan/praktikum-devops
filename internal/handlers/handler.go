@@ -19,7 +19,7 @@ type metricRepository interface {
 	GetMetricsMap() map[string]metrics.Metric
 	GetMetric(name string) (metrics.Metric, error)
 	Update(metrics.Metric)
-	UpdateSlice(metrics []metrics.Metric)
+	BatchUpdate(metrics []metrics.Metric)
 }
 
 const (
@@ -40,8 +40,6 @@ func UpdateStorageHandler(storage metricRepository, key string) http.HandlerFunc
 			return
 		}
 
-		var hashData string
-
 		switch kind {
 		case "gauge":
 			value, err := strconv.ParseFloat(value, 64)
@@ -51,7 +49,6 @@ func UpdateStorageHandler(storage metricRepository, key string) http.HandlerFunc
 				return
 			}
 			newMetric = metrics.NewMetricGauge(name, metrics.Gauge(value))
-			hashData = fmt.Sprintf(hashGaugeFormat, name, kind, value)
 		case "counter":
 			value, err := strconv.Atoi(value)
 			if err != nil {
@@ -60,8 +57,13 @@ func UpdateStorageHandler(storage metricRepository, key string) http.HandlerFunc
 				return
 			}
 			newMetric = metrics.NewMetricCounter(name, metrics.Counter(value))
-			hashData = fmt.Sprintf(hashCounterFormat, name, kind, value)
 		default:
+			rw.WriteHeader(http.StatusNotImplemented)
+			return
+		}
+
+		hashData, err := getHashData(newMetric)
+		if err != nil {
 			rw.WriteHeader(http.StatusNotImplemented)
 			return
 		}
@@ -128,7 +130,6 @@ func JSONUpdateHandler(storage metricRepository, key string) http.HandlerFunc {
 		}
 
 		var metric metrics.Metric
-		var hashData string
 
 		switch jsonMetric.MType {
 		case "gauge":
@@ -136,15 +137,19 @@ func JSONUpdateHandler(storage metricRepository, key string) http.HandlerFunc {
 				jsonMetric.ID,
 				metrics.Gauge(*jsonMetric.Value),
 			)
-			hashData = fmt.Sprintf(hashGaugeFormat, metric.GetName(), metric.GetKind(), metric.GetGaugeValue())
 		case "counter":
 			metric = metrics.NewMetricCounter(
 				jsonMetric.ID,
 				metrics.Counter(*jsonMetric.Delta),
 			)
-			hashData = fmt.Sprintf(hashCounterFormat, metric.GetName(), metric.GetKind(), metric.GetCounterValue())
 		default:
 			log.Fatal("Not implemented")
+		}
+
+		hashData, err := getHashData(metric)
+		if err != nil {
+			rw.WriteHeader(http.StatusNotImplemented)
+			return
 		}
 
 		hashHeader := jsonMetric.Hash
@@ -209,7 +214,18 @@ func MetricsUpdateHandler(storage metricRepository) http.HandlerFunc {
 
 			metricSlice = append(metricSlice, metric)
 		}
-		storage.UpdateSlice(metricSlice)
+
+		storage.BatchUpdate(metricSlice)
+
+		rw.Header().Set("Content-Type", "application/json")
+
+		_, err = rw.Write(bytes)
+		if err != nil {
+			log.Println(err)
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		rw.WriteHeader(http.StatusOK)
 	}
 }
@@ -255,15 +271,10 @@ func JSONPrintHandler(storage metricRepository, key string) http.HandlerFunc {
 
 		updateJSONMetric(&jsonMetric, metric)
 
-		var hashData string
-
-		switch jsonMetric.MType {
-		case "gauge":
-			hashData = fmt.Sprintf(hashGaugeFormat, jsonMetric.ID, jsonMetric.MType, *jsonMetric.Value)
-		case "counter":
-			hashData = fmt.Sprintf(hashCounterFormat, jsonMetric.ID, jsonMetric.MType, *jsonMetric.Delta)
-		default:
-			log.Fatal("Not implemented")
+		hashData, err := getHashData(metric)
+		if err != nil {
+			rw.WriteHeader(http.StatusNotImplemented)
+			return
 		}
 
 		jsonMetric.Hash = hash.Get(hashData, key)
@@ -324,23 +335,26 @@ func PrintValueHandler(storage metricRepository, key string) http.HandlerFunc {
 		kind := chi.URLParam(r, "kind")
 		name := chi.URLParam(r, "name")
 
-		value, err := storage.GetMetric(name)
-		if err != nil || value.GetKind() != kind {
+		metric, err := storage.GetMetric(name)
+		if err != nil || metric.GetKind() != kind {
 			rw.WriteHeader(http.StatusNotFound)
 			return
 		}
 
 		var result string
-		var hashData string
 
 		switch kind {
 		case "gauge":
-			result = fmt.Sprintf("%.3f", value.GetGaugeValue())
-			hashData = fmt.Sprintf(hashGaugeFormat, name, kind, value.GetGaugeValue())
+			result = fmt.Sprintf("%.3f", metric.GetGaugeValue())
 		case "counter":
-			result = fmt.Sprintf("%d", value.GetCounterValue())
-			hashData = fmt.Sprintf(hashCounterFormat, name, kind, value.GetCounterValue())
+			result = fmt.Sprintf("%d", metric.GetCounterValue())
 		default:
+			rw.WriteHeader(http.StatusNotImplemented)
+			return
+		}
+
+		hashData, err := getHashData(metric)
+		if err != nil {
 			rw.WriteHeader(http.StatusNotImplemented)
 			return
 		}
@@ -365,17 +379,23 @@ func PrintValueHandler(storage metricRepository, key string) http.HandlerFunc {
 	}
 }
 
-func PingDatabaseHandler(dbDSN string) http.HandlerFunc {
-	return func(rw http.ResponseWriter, r *http.Request) {
-		db, err := sql.Open("postgres", dbDSN)
-		if err != nil {
-			log.Println("Couldn't create connection to database")
-			rw.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		defer db.Close()
+func getHashData(metric metrics.Metric) (string, error) {
+	var hashData string
+	switch metric.GetKind() {
+	case "gauge":
+		hashData = fmt.Sprintf(hashGaugeFormat, metric.GetName(), metric.GetKind(), metric.GetGaugeValue())
+	case "counter":
+		hashData = fmt.Sprintf(hashCounterFormat, metric.GetName(), metric.GetKind(), metric.GetCounterValue())
+	default:
+		log.Println("not implemented type")
+		return "", errors.New("not implemented type")
+	}
+	return hashData, nil
+}
 
-		err = db.Ping()
+func PingDatabaseHandler(db *sql.DB) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		err := db.Ping()
 		if err != nil {
 			log.Println("Couldn't ping database")
 			rw.WriteHeader(http.StatusInternalServerError)

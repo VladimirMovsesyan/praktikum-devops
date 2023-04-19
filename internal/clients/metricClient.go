@@ -3,6 +3,7 @@ package clients
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/handlers"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/hash"
@@ -47,7 +48,6 @@ func metricsUpload(address string, mtrcs *metrics.Metrics, key string) {
 
 	for _, metric := range mtrcs.MetricSlice {
 		var jsonMetric handlers.JSONMetric
-		var hashData string
 
 		switch metric.GetKind() {
 		case "gauge":
@@ -57,7 +57,6 @@ func metricsUpload(address string, mtrcs *metrics.Metrics, key string) {
 				MType: metric.GetKind(),
 				Value: &value,
 			}
-			hashData = fmt.Sprintf(hashGaugeFormat, metric.GetName(), metric.GetKind(), metric.GetGaugeValue())
 		case "counter":
 			delta := int64(metric.GetCounterValue())
 			jsonMetric = handlers.JSONMetric{
@@ -65,9 +64,13 @@ func metricsUpload(address string, mtrcs *metrics.Metrics, key string) {
 				MType: metric.GetKind(),
 				Delta: &delta,
 			}
-			hashData = fmt.Sprintf(hashCounterFormat, metric.GetName(), metric.GetKind(), metric.GetCounterValue())
 		default:
 			log.Fatal("not implemented")
+		}
+
+		hashData, err := getHashData(metric)
+		if err != nil {
+			return
 		}
 
 		if key != "" {
@@ -102,15 +105,12 @@ func metricUpload(address string, metric metrics.Metric, key string) {
 	client := NewMetricsClient()
 
 	url := address
-	var hashData string
 
 	switch metric.GetKind() {
 	case "gauge":
 		url = fmt.Sprintf(url+updateGaugeFormat, metric.GetKind(), metric.GetName(), metric.GetGaugeValue())
-		hashData = fmt.Sprintf(hashGaugeFormat, metric.GetName(), metric.GetKind(), metric.GetGaugeValue())
 	case "counter":
 		url = fmt.Sprintf(url+updateCounterFormat, metric.GetKind(), metric.GetName(), metric.GetCounterValue())
-		hashData = fmt.Sprintf(hashCounterFormat, metric.GetName(), metric.GetKind(), metric.GetCounterValue())
 	default:
 		log.Fatal("Error: unsupported metric type!")
 	}
@@ -118,6 +118,11 @@ func metricUpload(address string, metric metrics.Metric, key string) {
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
 		log.Println("Error: ", err)
+		return
+	}
+
+	hashData, err := getHashData(metric)
+	if err != nil {
 		return
 	}
 
@@ -132,4 +137,18 @@ func metricUpload(address string, metric metrics.Metric, key string) {
 		return
 	}
 	defer resp.Body.Close()
+}
+
+func getHashData(metric metrics.Metric) (string, error) {
+	var hashData string
+	switch metric.GetKind() {
+	case "gauge":
+		hashData = fmt.Sprintf(hashGaugeFormat, metric.GetName(), metric.GetKind(), metric.GetGaugeValue())
+	case "counter":
+		hashData = fmt.Sprintf(hashCounterFormat, metric.GetName(), metric.GetKind(), metric.GetCounterValue())
+	default:
+		log.Println("not implemented type")
+		return "", errors.New("not implemented type")
+	}
+	return hashData, nil
 }

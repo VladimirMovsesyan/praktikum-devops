@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"database/sql"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/handlers"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/middleware"
@@ -15,10 +16,10 @@ type metricRepository interface {
 	GetMetricsMap() map[string]metrics.Metric
 	GetMetric(name string) (metrics.Metric, error)
 	Update(metrics.Metric)
-	UpdateSlice(metrics []metrics.Metric)
+	BatchUpdate(metrics []metrics.Metric)
 }
 
-func NewRouter(storage metricRepository, key, dbDsn string) chi.Router {
+func NewRouter(storage metricRepository, key string, db *sql.DB) chi.Router {
 	router := chi.NewRouter()
 	router.Use(
 		chiMiddleware.RequestID,
@@ -41,7 +42,7 @@ func NewRouter(storage metricRepository, key, dbDsn string) chi.Router {
 		r.Post("/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage, key))
 	})
 
-	router.Get("/ping", handlers.PingDatabaseHandler(dbDsn))
+	router.Get("/ping", handlers.PingDatabaseHandler(db))
 
 	router.Post("/updates/", handlers.MetricsUpdateHandler(storage))
 

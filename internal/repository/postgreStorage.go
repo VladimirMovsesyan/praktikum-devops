@@ -2,9 +2,12 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	_ "github.com/lib/pq"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -12,12 +15,10 @@ type PostgreStorage struct {
 	db *sql.DB
 }
 
-func NewPostgreStorage(dbDSN string) *PostgreStorage {
-	db, err := sql.Open("postgres", dbDSN)
-	if err != nil {
-		return nil
-	}
-	return &PostgreStorage{db: db}
+func NewPostgreStorage(db *sql.DB) *PostgreStorage {
+	storage := &PostgreStorage{db: db}
+	storage.ensureTableExists()
+	return storage
 }
 
 type dbMetric struct {
@@ -27,18 +28,55 @@ type dbMetric struct {
 	value sql.NullFloat64
 }
 
+var _ sql.Scanner = &dbMetric{}
+
+func (metric *dbMetric) Scan(value any) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		log.Println("couldn't convert value to []byte")
+		return errors.New("couldn't convert value to []byte")
+	}
+
+	sv := string(bytes)
+	split := strings.Split(sv[1:len(sv)-1], ",")
+
+	metric.name = split[0]
+	metric.mType = split[1]
+
+	switch metric.mType {
+	case "gauge":
+		value, err := strconv.ParseFloat(split[3], 64)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		metric.value.Float64, metric.value.Valid = value, true
+	case "counter":
+		delta, err := strconv.ParseInt(split[2], 10, 64)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		metric.delta.Int64, metric.delta.Valid = delta, true
+	default:
+		log.Println("not implemented")
+		return errors.New("not implemented")
+	}
+
+	return nil
+}
+
 func (storage *PostgreStorage) GetMetricsMap() map[string]metrics.Metric {
-	storage.ensureTableExists()
 	metricsMap := make(map[string]metrics.Metric)
 
-	rows, err := storage.db.Query(`SELECT metric_name, metric_type, metric_delta, metric_value FROM metric`)
+	rows, err := storage.db.Query(`SELECT (metric_name, metric_type, metric_delta, metric_value) FROM metric`)
 	if err != nil || rows.Err() != nil {
 		return nil
 	}
 
 	for rows.Next() {
 		var dbObj dbMetric
-		err = rows.Scan(&dbObj.name, &dbObj.mType, &dbObj.delta, &dbObj.value)
+		err = rows.Scan(&dbObj)
 		if err != nil {
 			return nil
 		}
@@ -60,9 +98,8 @@ func (storage *PostgreStorage) GetMetricsMap() map[string]metrics.Metric {
 }
 
 func (storage *PostgreStorage) GetMetric(name string) (metrics.Metric, error) {
-	storage.ensureTableExists()
 	row := storage.db.QueryRow(
-		`SELECT metric_name, metric_type, metric_delta, metric_value FROM metric WHERE metric_name = $1`,
+		`SELECT (metric_name, metric_type, metric_delta, metric_value) FROM metric WHERE metric_name = $1`,
 		name,
 	)
 	if row.Err() != nil {
@@ -70,7 +107,7 @@ func (storage *PostgreStorage) GetMetric(name string) (metrics.Metric, error) {
 	}
 
 	var dbObj dbMetric
-	err := row.Scan(&dbObj.name, &dbObj.mType, &dbObj.delta, &dbObj.value)
+	err := row.Scan(&dbObj)
 	if err != nil {
 		return metrics.Metric{}, err
 	}
@@ -89,7 +126,6 @@ func (storage *PostgreStorage) GetMetric(name string) (metrics.Metric, error) {
 }
 
 func (storage *PostgreStorage) Update(metric metrics.Metric) {
-	storage.ensureTableExists()
 	row := storage.db.QueryRow(`SELECT COUNT(*) FROM metric WHERE metric_name = $1`, metric.GetName())
 	if row.Err() != nil {
 		return
@@ -167,7 +203,7 @@ func (storage *PostgreStorage) ensureTableExists() {
 	_, _ = storage.db.Exec(tableCreation)
 }
 
-func (storage *PostgreStorage) UpdateSlice(metrics []metrics.Metric) {
+func (storage *PostgreStorage) BatchUpdate(metrics []metrics.Metric) {
 	tx, err := storage.db.Begin()
 	if err != nil {
 		log.Println(err)

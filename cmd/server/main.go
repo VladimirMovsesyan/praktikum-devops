@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/cache"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
@@ -25,7 +26,7 @@ type metricRepository interface {
 	GetMetricsMap() map[string]metrics.Metric
 	GetMetric(name string) (metrics.Metric, error)
 	Update(metrics.Metric)
-	UpdateSlice(metrics []metrics.Metric)
+	BatchUpdate(metrics []metrics.Metric)
 }
 
 var (
@@ -59,15 +60,21 @@ func main() {
 		flDSN,
 	)
 
+	db, err := sql.Open("postgres", dbDSN)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
 	var storage metricRepository
 	switch dbDSN {
 	case "":
 		storage = repository.NewMemStorage()
 	default:
-		storage = repository.NewPostgreStorage(dbDSN)
+		storage = repository.NewPostgreStorage(db)
 	}
 
-	router := utils.NewRouter(storage, key, dbDSN)
+	router := utils.NewRouter(storage, key, db)
 	address := utils.UpdateStringVar(
 		"ADDRESS",
 		flAddr,
