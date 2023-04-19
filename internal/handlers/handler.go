@@ -215,6 +215,7 @@ func MetricsUpdateHandler(storage metricRepository) http.HandlerFunc {
 			metricSlice = append(metricSlice, metric)
 		}
 		storage.BatchUpdate(metricSlice)
+		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusOK)
 	}
 }
