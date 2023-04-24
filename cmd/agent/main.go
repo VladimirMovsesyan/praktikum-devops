@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/clients"
-	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/utils"
 	"log"
 	"os"
@@ -15,6 +14,7 @@ import (
 const (
 	defaultPoll   = 2 * time.Second
 	defaultReport = 10 * time.Second
+	defaultLimit  = 1
 )
 
 var (
@@ -22,6 +22,7 @@ var (
 	flPoll   *time.Duration // POLL_INTERVAL
 	flReport *time.Duration // REPORT_INTERVAL
 	flKey    *string        // KEY
+	flLimit  *int           // RATE_LIMIT
 )
 
 func parseFlags() {
@@ -30,6 +31,7 @@ func parseFlags() {
 	flPoll = flag.Duration("p", defaultPoll, "Interval of polling metrics")       // POLL_INTERVAL
 	flReport = flag.Duration("r", defaultReport, "Interval of reporting metrics") // REPORT_INTERVAL
 	flKey = flag.String("k", "", "Hash key")                                      // KEY
+	flLimit = flag.Int("l", defaultLimit, "Limit of requests rate")               // RATE_LIMIT
 	flag.Parse()
 }
 
@@ -38,8 +40,10 @@ func main() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
-	// Creating objects of metrics and client
-	mtrcs := metrics.NewMetrics()
+	address := utils.UpdateStringVar(
+		"ADDRESS",
+		flAddr,
+	)
 
 	// Creating poll and report intervals
 	pollInterval := time.NewTicker(
@@ -60,16 +64,29 @@ func main() {
 		flKey,
 	)
 
+	limit := utils.UpdateIntVar(
+		"RATE_LIMIT",
+		flLimit,
+	)
+
+	// Creating worker pool
+	wp := clients.NewWorkerPool(limit, address, key)
+
+	// Worker pool process start
+	wp.Run()
+
 	// Agent's process
 	for {
 		select {
 		case <-pollInterval.C:
-			//Updating metrics
-			go metrics.UpdateMetrics(mtrcs)
+			// Updating metrics
+			wp.AddTask("updateMem")
+			wp.AddTask("updateGopsutil")
 		case <-reportInterval.C:
-			//Sending metrics
-			go clients.MetricsUpload(mtrcs, flAddr, key)
+			// Sending metrics
+			wp.AddTask("upload")
 		case sig := <-signals:
+			wp.Stop()
 			log.Println("Got signal:", sig.String())
 			return
 		}

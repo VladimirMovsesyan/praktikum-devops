@@ -1,10 +1,13 @@
 package metrics
 
 import (
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 	"log"
 	"math"
 	"math/rand"
 	"runtime"
+	"time"
 )
 
 type Gauge float64
@@ -63,58 +66,78 @@ func (m *Metric) GetCounterValue() Counter {
 	return Counter(m.value)
 }
 
-type Metrics struct {
-	pollCounter Counter
-	MetricSlice []Metric
+type metricRepository interface {
+	GetMetric(name string) (Metric, error)
+	Update(Metric)
+	BatchUpdate(metrics []Metric)
 }
 
-func NewMetrics() *Metrics {
-	return &Metrics{
-		pollCounter: 0,
-		MetricSlice: []Metric{},
-	}
-}
-
-func UpdateMetrics(metrics *Metrics) {
+func UpdateMetrics(metrics metricRepository) {
 	log.Println("reading MemStats")
 	runtimeMetrics := runtime.MemStats{}
 	runtime.ReadMemStats(&runtimeMetrics)
 
 	log.Println("updating metrics")
-	metrics.pollCounter++
-	metrics.MetricSlice = []Metric{
-		NewMetricGauge("Alloc", Gauge(runtimeMetrics.Alloc)),
-		NewMetricGauge("BuckHashSys", Gauge(runtimeMetrics.BuckHashSys)),
-		NewMetricGauge("Frees", Gauge(runtimeMetrics.Frees)),
-		NewMetricGauge("GCCPUFraction", Gauge(runtimeMetrics.GCCPUFraction)),
-		NewMetricGauge("GCSys", Gauge(runtimeMetrics.GCSys)),
-		NewMetricGauge("HeapAlloc", Gauge(runtimeMetrics.HeapAlloc)),
-		NewMetricGauge("HeapIdle", Gauge(runtimeMetrics.HeapIdle)),
-		NewMetricGauge("HeapInuse", Gauge(runtimeMetrics.HeapInuse)),
-		NewMetricGauge("HeapObjects", Gauge(runtimeMetrics.HeapObjects)),
-		NewMetricGauge("HeapReleased", Gauge(runtimeMetrics.HeapReleased)),
-		NewMetricGauge("HeapSys", Gauge(runtimeMetrics.HeapSys)),
-		NewMetricGauge("LastGC", Gauge(runtimeMetrics.LastGC)),
-		NewMetricGauge("Lookups", Gauge(runtimeMetrics.Lookups)),
-		NewMetricGauge("MCacheInuse", Gauge(runtimeMetrics.MCacheInuse)),
-		NewMetricGauge("MCacheSys", Gauge(runtimeMetrics.MCacheSys)),
-		NewMetricGauge("MSpanInuse", Gauge(runtimeMetrics.MSpanInuse)),
-		NewMetricGauge("MSpanSys", Gauge(runtimeMetrics.MSpanSys)),
-		NewMetricGauge("Mallocs", Gauge(runtimeMetrics.Mallocs)),
-		NewMetricGauge("NextGC", Gauge(runtimeMetrics.NextGC)),
-		NewMetricGauge("NumForcedGC", Gauge(runtimeMetrics.NumForcedGC)),
-		NewMetricGauge("NumGC", Gauge(runtimeMetrics.NumGC)),
-		NewMetricGauge("OtherSys", Gauge(runtimeMetrics.OtherSys)),
-		NewMetricGauge("PauseTotalNs", Gauge(runtimeMetrics.PauseTotalNs)),
-		NewMetricGauge("StackInuse", Gauge(runtimeMetrics.StackInuse)),
-		NewMetricGauge("StackSys", Gauge(runtimeMetrics.StackSys)),
-		NewMetricGauge("Sys", Gauge(runtimeMetrics.Sys)),
-		NewMetricGauge("TotalAlloc", Gauge(runtimeMetrics.TotalAlloc)),
-		NewMetricCounter("PollCount", metrics.pollCounter),
-		NewMetricGauge("RandomValue", Gauge(rand.Float64()*math.MaxFloat64)),
-	}
+	pollCount, _ := metrics.GetMetric("PollCount")
+	metrics.BatchUpdate(
+		[]Metric{
+			NewMetricGauge("Alloc", Gauge(runtimeMetrics.Alloc)),
+			NewMetricGauge("BuckHashSys", Gauge(runtimeMetrics.BuckHashSys)),
+			NewMetricGauge("Frees", Gauge(runtimeMetrics.Frees)),
+			NewMetricGauge("GCCPUFraction", Gauge(runtimeMetrics.GCCPUFraction)),
+			NewMetricGauge("GCSys", Gauge(runtimeMetrics.GCSys)),
+			NewMetricGauge("HeapAlloc", Gauge(runtimeMetrics.HeapAlloc)),
+			NewMetricGauge("HeapIdle", Gauge(runtimeMetrics.HeapIdle)),
+			NewMetricGauge("HeapInuse", Gauge(runtimeMetrics.HeapInuse)),
+			NewMetricGauge("HeapObjects", Gauge(runtimeMetrics.HeapObjects)),
+			NewMetricGauge("HeapReleased", Gauge(runtimeMetrics.HeapReleased)),
+			NewMetricGauge("HeapSys", Gauge(runtimeMetrics.HeapSys)),
+			NewMetricGauge("LastGC", Gauge(runtimeMetrics.LastGC)),
+			NewMetricGauge("Lookups", Gauge(runtimeMetrics.Lookups)),
+			NewMetricGauge("MCacheInuse", Gauge(runtimeMetrics.MCacheInuse)),
+			NewMetricGauge("MCacheSys", Gauge(runtimeMetrics.MCacheSys)),
+			NewMetricGauge("MSpanInuse", Gauge(runtimeMetrics.MSpanInuse)),
+			NewMetricGauge("MSpanSys", Gauge(runtimeMetrics.MSpanSys)),
+			NewMetricGauge("Mallocs", Gauge(runtimeMetrics.Mallocs)),
+			NewMetricGauge("NextGC", Gauge(runtimeMetrics.NextGC)),
+			NewMetricGauge("NumForcedGC", Gauge(runtimeMetrics.NumForcedGC)),
+			NewMetricGauge("NumGC", Gauge(runtimeMetrics.NumGC)),
+			NewMetricGauge("OtherSys", Gauge(runtimeMetrics.OtherSys)),
+			NewMetricGauge("PauseTotalNs", Gauge(runtimeMetrics.PauseTotalNs)),
+			NewMetricGauge("StackInuse", Gauge(runtimeMetrics.StackInuse)),
+			NewMetricGauge("StackSys", Gauge(runtimeMetrics.StackSys)),
+			NewMetricGauge("Sys", Gauge(runtimeMetrics.Sys)),
+			NewMetricGauge("TotalAlloc", Gauge(runtimeMetrics.TotalAlloc)),
+			NewMetricCounter("PollCount", pollCount.GetCounterValue()+1),
+			NewMetricGauge("RandomValue", Gauge(rand.Float64()*math.MaxFloat64)),
+		},
+	)
 }
 
-func (m *Metrics) ResetPollCounter() {
-	m.pollCounter = 0
+func UpdateMetricsGopsutil(metrics metricRepository) {
+	log.Println("reading gopsutil")
+	m, err := mem.VirtualMemory()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	percent, err := cpu.Percent(100*time.Millisecond, false)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	log.Println("updating metrics")
+	metrics.BatchUpdate(
+		[]Metric{
+			NewMetricGauge("TotalMemory", Gauge(m.Total)),
+			NewMetricGauge("FreeMemory", Gauge(m.Free)),
+			NewMetricGauge("CPUutilization1", Gauge(percent[0])),
+		},
+	)
+}
+
+func ResetPollCounter(metrics metricRepository) {
+	metrics.Update(NewMetricCounter("PollCount", 0))
 }
