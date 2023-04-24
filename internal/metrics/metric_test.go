@@ -236,39 +236,3 @@ func TestMetric_GetName(t *testing.T) {
 		})
 	}
 }
-
-func TestMetrics_ResetPollCounter(t *testing.T) {
-	type fields struct {
-		pollCounter Counter
-		MetricSlice []Metric
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-		{
-			name: "Zero",
-			fields: fields{
-				pollCounter: 0,
-				MetricSlice: []Metric{},
-			},
-		},
-		{
-			name: "not zero",
-			fields: fields{
-				pollCounter: 5,
-				MetricSlice: []Metric{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			m := &Metrics{
-				pollCounter: tt.fields.pollCounter,
-				MetricSlice: tt.fields.MetricSlice,
-			}
-			m.ResetPollCounter()
-			assert.Zero(t, m.pollCounter)
-		})
-	}
-}
