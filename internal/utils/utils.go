@@ -82,3 +82,17 @@ func UpdateBoolVar(envName string, fl *bool) bool {
 	}
 	return value == "true"
 }
+
+func UpdateIntVar(envName string, fl *int) int {
+	value, ok := os.LookupEnv(envName)
+	if !ok {
+		return *fl
+	}
+
+	result, err := strconv.Atoi(value)
+	if err != nil {
+		return *fl
+	}
+
+	return result
+}

@@ -8,7 +8,7 @@ import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/handlers"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/hash"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
-	"github.com/VladimirMovsesyan/praktikum-devops/internal/utils"
+	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
 	"log"
 	"net/http"
 	"time"
@@ -28,25 +28,29 @@ func NewMetricsClient() *http.Client {
 	return client
 }
 
-func MetricsUpload(mtrcs *metrics.Metrics, flAddr *string, key string) {
-	address := defaultProtocol + utils.UpdateStringVar(
-		"ADDRESS",
-		flAddr,
-	)
+func MetricsUpload(storage metricRepository, address, key string) {
+	address = defaultProtocol + address
 
 	log.Println("sending metrics to:", address)
-	metricsUpload(address, mtrcs, key)
+	metricsUpload(storage, address, key)
 
-	mtrcs.ResetPollCounter()
+	metrics.ResetPollCounter(storage)
 }
 
-func metricsUpload(address string, mtrcs *metrics.Metrics, key string) {
+func metricsUpload(storage metricRepository, address, key string) {
 	client := NewMetricsClient()
 	url := address + "/updates/"
 
-	jsonMetrics := make([]handlers.JSONMetric, 0, len(mtrcs.MetricSlice))
+	metricsMap := storage.GetMetricsMap()
 
-	for _, metric := range mtrcs.MetricSlice {
+	if len(metricsMap) == 0 {
+		log.Println("Empty batch, uploading skipped")
+		return
+	}
+
+	jsonMetrics := make([]handlers.JSONMetric, 0, len(metricsMap))
+
+	for _, metric := range metricsMap {
 		var jsonMetric handlers.JSONMetric
 
 		switch metric.GetKind() {
@@ -151,4 +155,56 @@ func getHashData(metric metrics.Metric) (string, error) {
 		return "", errors.New("not implemented type")
 	}
 	return hashData, nil
+}
+
+type metricRepository interface {
+	GetMetricsMap() map[string]metrics.Metric
+	GetMetric(name string) (metrics.Metric, error)
+	Update(metrics.Metric)
+	BatchUpdate(metrics []metrics.Metric)
+}
+
+type workerPool struct {
+	workerCnt int
+	address   string
+	key       string
+	storage   metricRepository
+	taskCh    chan string
+}
+
+func NewWorkerPool(workerCnt int, address, key string) *workerPool {
+	return &workerPool{
+		workerCnt: workerCnt,
+		address:   address,
+		key:       key,
+		storage:   repository.NewMemStorage(),
+		taskCh:    make(chan string),
+	}
+}
+
+func (wp *workerPool) Run() {
+	for i := 0; i < wp.workerCnt; i++ {
+		go func() {
+			for task := range wp.taskCh {
+				switch task {
+				case "updateMem":
+					metrics.UpdateMetrics(wp.storage)
+				case "updateGopsutil":
+					metrics.UpdateMetricsGopsutil(wp.storage)
+				case "upload":
+					MetricsUpload(wp.storage, wp.address, wp.key)
+				default:
+					log.Println("not implemented type of worker pool's task")
+				}
+			}
+		}()
+	}
+}
+
+func (wp *workerPool) AddTask(task string) {
+	wp.taskCh <- task
+}
+
+func (wp *workerPool) Stop() {
+	close(wp.taskCh)
 }

@@ -23,8 +23,8 @@ func (ms *MemStorage) GetMetricsMap() map[string]metrics.Metric {
 }
 
 func (ms *MemStorage) GetMetric(name string) (metrics.Metric, error) {
-	ms.mutex.Lock()
-	defer ms.mutex.Unlock()
+	ms.mutex.RLock()
+	defer ms.mutex.RUnlock()
 
 	metric, ok := ms.mtrcs[name]
 	if !ok {
