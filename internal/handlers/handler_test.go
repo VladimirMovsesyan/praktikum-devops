@@ -5,6 +5,7 @@ import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -249,6 +250,49 @@ func TestPrintValueHandler(t *testing.T) {
 				slice, _ := io.ReadAll(result.Body)
 				str := string(slice[:])
 				assert.Equal(t, tt.want.html, str)
+			}
+		})
+	}
+}
+
+func TestNewJSONMetric(t *testing.T) {
+	delta := int64(12)
+	counter := metrics.NewMetricCounter("test", metrics.Counter(delta))
+	counterJSON := &JSONMetric{ID: "test", Delta: &delta}
+
+	value := 12.21
+	gauge := metrics.NewMetricGauge("test", metrics.Gauge(value))
+	gaugeJSON := &JSONMetric{ID: "test", Value: &value}
+
+	tests := []struct {
+		name   string
+		metric metrics.Metric
+		want   *JSONMetric
+	}{
+		{
+			name:   "Counter",
+			metric: counter,
+			want:   counterJSON,
+		},
+		{
+			name:   "Gauge",
+			metric: gauge,
+			want:   gaugeJSON,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			jsonObj, err := NewJSONMetric(tt.metric)
+			require.NoError(t, err)
+			require.Equal(t, tt.want.ID, jsonObj.ID)
+
+			if tt.want.Delta != nil {
+				require.Equal(t, *tt.want.Delta, *jsonObj.Delta)
+			}
+
+			if tt.want.Value != nil {
+				require.Equal(t, *tt.want.Value, *jsonObj.Value)
 			}
 		})
 	}
