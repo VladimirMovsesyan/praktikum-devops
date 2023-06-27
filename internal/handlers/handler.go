@@ -27,6 +27,9 @@ const (
 	hashCounterFormat = "%s:%s:%d"
 )
 
+// UpdateStorageHandler - handler that routing from "/update/kind/name/value".
+// Parsing query params to values and updating metric in DB.
+// If metric with such name and kind doesn't exist, creating new metric.
 func UpdateStorageHandler(storage metricRepository, key string) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		kind := chi.URLParam(r, "kind")
@@ -82,6 +85,7 @@ func UpdateStorageHandler(storage metricRepository, key string) http.HandlerFunc
 	}
 }
 
+// JSONMetric - struct that helps to marshal/unmarshal metric to/from json representation.
 type JSONMetric struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
@@ -110,6 +114,9 @@ func NewJSONMetric(metric metrics.Metric) (*JSONMetric, error) {
 	return jsonMetric, nil
 }
 
+// JSONUpdateHandler - handler that routing from "/update".
+// Parsing json provided data to values and updating metric in DB.
+// If metric with such name and kind doesn't exist, creating new metric.
 func JSONUpdateHandler(storage metricRepository, key string) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		bytes, err := io.ReadAll(r.Body)
@@ -175,6 +182,9 @@ func JSONUpdateHandler(storage metricRepository, key string) http.HandlerFunc {
 	}
 }
 
+// MetricsUpdateHandler - handler that routing from "/updates".
+// Parsing json provided batch of metric to values and updating metrics in DB.
+// If metrics with such name and kind doesn't exist, creating new metric.
 func MetricsUpdateHandler(storage metricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		bytes, err := io.ReadAll(r.Body)
@@ -243,6 +253,9 @@ func updateJSONMetric(jsonMetric *JSONMetric, metric metrics.Metric) {
 	}
 }
 
+// JSONPrintHandler - handler that routing from "/value".
+// Parsing json provided data that contains metric name and kind and returning metric with such name and kind.
+// If metric with such name and kind doesn't exist returning status 404.
 func JSONPrintHandler(storage metricRepository, key string) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		bytes, err := io.ReadAll(r.Body)
@@ -307,6 +320,8 @@ func JSONPrintHandler(storage metricRepository, key string) http.HandlerFunc {
 	}
 }
 
+// PrintStorageHandler - handler that routing from "/".
+// Printing all metrics from db.
 func PrintStorageHandler(storage metricRepository) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		mtrcs := storage.GetMetricsMap()
@@ -330,6 +345,9 @@ func PrintStorageHandler(storage metricRepository) http.HandlerFunc {
 	}
 }
 
+// PrintValueHandler - handler that routing from "/value/kind/name".
+// Parsing metrics kind and name from query params and printing metric with such kind and name.
+// If metric with such name and kind doesn't exist, returning status 404.
 func PrintValueHandler(storage metricRepository, key string) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		kind := chi.URLParam(r, "kind")
@@ -393,6 +411,8 @@ func getHashData(metric metrics.Metric) (string, error) {
 	return hashData, nil
 }
 
+// PingDatabaseHandler - handler that routing from "/ping".
+// Testing connection to DB.
 func PingDatabaseHandler(db *sql.DB) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		err := db.Ping()

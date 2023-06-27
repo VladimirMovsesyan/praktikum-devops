@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// PostgreStorage - contains pointer to pool of db connections.
 type PostgreStorage struct {
 	db *sql.DB
 }

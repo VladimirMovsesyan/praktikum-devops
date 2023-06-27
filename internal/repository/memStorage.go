@@ -7,6 +7,7 @@ import (
 	"sync"
 )
 
+// MemStorage - contains map of metrics where key is metrics name and value is metric.
 type MemStorage struct {
 	mutex sync.RWMutex
 	mtrcs map[string]metrics.Metric
