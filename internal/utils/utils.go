@@ -46,6 +46,8 @@ func NewRouter(storage metricRepository, key string, db *sql.DB) chi.Router {
 
 	router.Post("/updates/", handlers.MetricsUpdateHandler(storage))
 
+	router.Mount("/debug", chiMiddleware.Profiler())
+
 	return router
 }
 
