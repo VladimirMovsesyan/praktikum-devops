@@ -20,6 +20,7 @@ const (
 	CounterKind
 )
 
+// Metric - contains kind, name and value of metric.
 type Metric struct {
 	kind  MetricKind
 	name  string
