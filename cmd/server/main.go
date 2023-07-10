@@ -30,6 +30,9 @@ type metricRepository interface {
 }
 
 var (
+	buildVersion    = "N/A"
+	buildDate       = "N/A"
+	buildCommit     = "N/A"
 	flAddr          *string        // ADDRESS
 	flStoreInterval *time.Duration // STORE_INTERVAL
 	flStoreFile     *string        // STORE_FILE
@@ -50,6 +53,9 @@ func parseFlags() {
 }
 
 func main() {
+	log.Println("Build version:", buildVersion)
+	log.Println("Build date:", buildDate)
+	log.Println("Build commit:", buildCommit)
 	parseFlags()
 	key := utils.UpdateStringVar(
 		"KEY",

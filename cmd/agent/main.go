@@ -18,11 +18,14 @@ const (
 )
 
 var (
-	flAddr   *string        // ADDRESS
-	flPoll   *time.Duration // POLL_INTERVAL
-	flReport *time.Duration // REPORT_INTERVAL
-	flKey    *string        // KEY
-	flLimit  *int           // RATE_LIMIT
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+	flAddr       *string        // ADDRESS
+	flPoll       *time.Duration // POLL_INTERVAL
+	flReport     *time.Duration // REPORT_INTERVAL
+	flKey        *string        // KEY
+	flLimit      *int           // RATE_LIMIT
 )
 
 func parseFlags() {
@@ -36,6 +39,9 @@ func parseFlags() {
 }
 
 func main() {
+	log.Println("Build version:", buildVersion)
+	log.Println("Build date:", buildDate)
+	log.Println("Build commit:", buildCommit)
 	parseFlags()
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
