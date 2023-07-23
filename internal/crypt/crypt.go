@@ -39,6 +39,11 @@ func New(opts ...func(c *crypt) error) (Crypter, error) {
 func WithPrivateKey(keyPath string) func(c *crypt) error {
 	return func(c *crypt) error {
 		data, err := os.ReadFile(keyPath)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
 		block, _ := pem.Decode(data)
 
 		key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
@@ -55,6 +60,11 @@ func WithPrivateKey(keyPath string) func(c *crypt) error {
 func WithPublicKey(keyPath string) func(c *crypt) error {
 	return func(c *crypt) error {
 		data, err := os.ReadFile(keyPath)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
 		block, _ := pem.Decode(data)
 
 		key, err := x509.ParsePKCS1PublicKey(block.Bytes)
