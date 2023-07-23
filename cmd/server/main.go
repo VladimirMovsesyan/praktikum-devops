@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"flag"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/cache"
+	"github.com/VladimirMovsesyan/praktikum-devops/internal/crypt"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/utils"
@@ -39,6 +40,7 @@ var (
 	flRestore       *bool          // RESTORE
 	flKey           *string        // KEY
 	flDSN           *string        // DATABASE_DSN
+	flCrypt         *string        // CRYPTO_KEY
 )
 
 func parseFlags() {
@@ -49,6 +51,7 @@ func parseFlags() {
 	flRestore = flag.Bool("r", defaultRestore, "Is need to restore storage")       // RESTORE
 	flKey = flag.String("k", "", "Hash key")                                       // KEY
 	flDSN = flag.String("d", "", "Data source name")                               // DATABASE_DSN
+	flCrypt = flag.String("crypto-key", "", "Path to private crypto key")          // CRYPTO_KEY
 	flag.Parse()
 }
 
@@ -81,6 +84,19 @@ func main() {
 	}
 
 	router := utils.NewRouter(storage, key, db)
+
+	cryptoPath := utils.UpdateStringVar(
+		"CRYPTO_KEY",
+		flCrypt,
+	)
+	if cryptoPath != "" {
+		c, err := crypt.New(crypt.WithPrivateKey(cryptoPath))
+		if err != nil {
+			log.Fatal(err)
+		}
+		router.Use(c.GetDecryptMiddleware())
+	}
+
 	address := utils.UpdateStringVar(
 		"ADDRESS",
 		flAddr,
