@@ -80,8 +80,6 @@ func main() {
 		}
 	}
 
-	log.Println(configuration)
-
 	key := utils.UpdateStringVar(
 		"KEY",
 		flKey,
