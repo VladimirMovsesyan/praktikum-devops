@@ -51,7 +51,7 @@ func NewRouter(storage metricRepository, key string, db *sql.DB) chi.Router {
 	return router
 }
 
-func UpdateDurVar(envName string, fl *time.Duration) time.Duration {
+func UpdateDurVar(envName string, fl *time.Duration, configValue time.Duration) time.Duration {
 	value, ok := os.LookupEnv(envName)
 	if !ok {
 		return *fl
@@ -60,6 +60,10 @@ func UpdateDurVar(envName string, fl *time.Duration) time.Duration {
 	result, err := strconv.Atoi(value)
 	if err != nil {
 		return *fl
+	}
+
+	if result == 0 && *fl == 0 {
+		return configValue
 	}
 
 	return time.Duration(result) * time.Second
@@ -69,23 +73,33 @@ const (
 	DefaultAddress = "127.0.0.1:8080"
 )
 
-func UpdateStringVar(envName string, fl *string) string {
+func UpdateStringVar(envName string, fl *string, configValue string) string {
 	value, ok := os.LookupEnv(envName)
 	if !ok {
 		return *fl
 	}
+
+	if value == "" && *fl == "" {
+		return configValue
+	}
+
 	return value
 }
 
-func UpdateBoolVar(envName string, fl *bool) bool {
+func UpdateBoolVar(envName string, fl *bool, configValue bool) bool {
 	value, ok := os.LookupEnv(envName)
 	if !ok {
 		return *fl
 	}
+
+	if value == "" && *fl == false {
+		return configValue
+	}
+
 	return value == "true"
 }
 
-func UpdateIntVar(envName string, fl *int) int {
+func UpdateIntVar(envName string, fl *int, configValue int) int {
 	value, ok := os.LookupEnv(envName)
 	if !ok {
 		return *fl
@@ -94,6 +108,10 @@ func UpdateIntVar(envName string, fl *int) int {
 	result, err := strconv.Atoi(value)
 	if err != nil {
 		return *fl
+	}
+
+	if result == 0 && *fl == 0 {
+		return configValue
 	}
 
 	return result
