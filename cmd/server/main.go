@@ -64,7 +64,7 @@ func main() {
 	log.Println("Build commit:", buildCommit)
 	parseFlags()
 
-	var configuration *config.ServerConfig
+	configuration := &config.ServerConfig{}
 
 	conf := utils.UpdateBoolVar(
 		"CONFIG",
