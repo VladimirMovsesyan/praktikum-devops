@@ -92,7 +92,7 @@ func UpdateBoolVar(envName string, fl *bool, configValue bool) bool {
 		return *fl
 	}
 
-	if value == "" && *fl == false {
+	if value == "" && !*fl {
 		return configValue
 	}
 
