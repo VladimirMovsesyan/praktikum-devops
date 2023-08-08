@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/hash"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
+	"github.com/VladimirMovsesyan/praktikum-devops/proto"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/lib/pq"
 	"io"
@@ -237,6 +239,25 @@ func MetricsUpdateHandler(storage metricRepository) http.HandlerFunc {
 		}
 
 		rw.WriteHeader(http.StatusOK)
+	}
+}
+
+func GRPCMetricUpdateHandler(storage metricRepository) func(ctx context.Context, request *proto.BatchUpdateMetricsRequest) (*proto.BatchUpdateMetricsResponse, error) {
+	return func(ctx context.Context, in *proto.BatchUpdateMetricsRequest) (*proto.BatchUpdateMetricsResponse, error) {
+		for _, m := range in.GetMetrics() {
+			var metric metrics.Metric
+			switch m.MType.String() {
+			case "counter":
+				metric = metrics.NewMetricCounter(m.ID, metrics.Counter(m.GetDelta()))
+			case "gauge":
+				metric = metrics.NewMetricGauge(m.ID, metrics.Gauge(m.GetValue()))
+			default:
+				return nil, errors.New("unsupported metric type")
+			}
+			storage.Update(metric)
+		}
+		response := &proto.BatchUpdateMetricsResponse{}
+		return response, nil
 	}
 }
 
