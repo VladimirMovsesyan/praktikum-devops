@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 )
@@ -59,4 +60,35 @@ func Decompress(next http.Handler) http.Handler {
 			next.ServeHTTP(rw, r)
 		},
 	)
+}
+
+func SubnetCheck(subnet string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(
+			func(rw http.ResponseWriter, r *http.Request) {
+				if subnet == "" {
+					next.ServeHTTP(rw, r)
+					return
+				}
+
+				ipHeader := r.Header.Get("X-Real-IP")
+				ip := net.ParseIP(ipHeader)
+
+				_, ipv4Net, err := net.ParseCIDR(subnet)
+				if err != nil {
+					log.Println(err)
+					rw.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+
+				if !ipv4Net.Contains(ip) {
+					log.Printf("Client IP: '%s' is not in subnet: '%s'\n", ipHeader, subnet)
+					rw.WriteHeader(http.StatusForbidden)
+					return
+				}
+
+				next.ServeHTTP(rw, r)
+			},
+		)
+	}
 }

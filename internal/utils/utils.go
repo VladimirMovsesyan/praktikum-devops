@@ -19,7 +19,7 @@ type metricRepository interface {
 	BatchUpdate(metrics []metrics.Metric)
 }
 
-func NewRouter(storage metricRepository, key string, db *sql.DB) chi.Router {
+func NewRouter(storage metricRepository, key string, db *sql.DB, subnet string) chi.Router {
 	router := chi.NewRouter()
 	router.Use(
 		chiMiddleware.RequestID,
@@ -37,14 +37,16 @@ func NewRouter(storage metricRepository, key string, db *sql.DB) chi.Router {
 		r.Get("/{kind}/{name}", handlers.PrintValueHandler(storage, key))
 	})
 
-	router.Route("/update", func(r chi.Router) {
-		r.Post("/", handlers.JSONUpdateHandler(storage, key))
-		r.Post("/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage, key))
+	router.Group(func(r chi.Router) {
+		r.Use(middleware.SubnetCheck(subnet))
+		r.Route("/update", func(ru chi.Router) {
+			ru.Post("/", handlers.JSONUpdateHandler(storage, key))
+			ru.Post("/{kind}/{name}/{value}", handlers.UpdateStorageHandler(storage, key))
+		})
+		r.Post("/updates/", handlers.MetricsUpdateHandler(storage))
 	})
 
 	router.Get("/ping", handlers.PingDatabaseHandler(db))
-
-	router.Post("/updates/", handlers.MetricsUpdateHandler(storage))
 
 	router.Mount("/debug", chiMiddleware.Profiler())
 
