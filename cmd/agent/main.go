@@ -26,6 +26,7 @@ var (
 	flReport     *time.Duration // REPORT_INTERVAL
 	flKey        *string        // KEY
 	flLimit      *int           // RATE_LIMIT
+	flCrypto     *string        // CRYPTO_KEY
 )
 
 func parseFlags() {
@@ -35,6 +36,7 @@ func parseFlags() {
 	flReport = flag.Duration("r", defaultReport, "Interval of reporting metrics") // REPORT_INTERVAL
 	flKey = flag.String("k", "", "Hash key")                                      // KEY
 	flLimit = flag.Int("l", defaultLimit, "Limit of requests rate")               // RATE_LIMIT
+	flCrypto = flag.String("crypto-key", "", "Path to public crypto key")         // CRYPTO_KEY
 	flag.Parse()
 }
 
@@ -75,8 +77,13 @@ func main() {
 		flLimit,
 	)
 
+	keyPath := utils.UpdateStringVar(
+		"CRYPTO_KEY",
+		flCrypto,
+	)
+
 	// Creating worker pool
-	wp := clients.NewWorkerPool(limit, address, key)
+	wp := clients.NewWorkerPool(limit, address, key, keyPath)
 
 	// Worker pool process start
 	wp.Run()

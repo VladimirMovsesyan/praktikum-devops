@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/VladimirMovsesyan/praktikum-devops/internal/crypt"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/handlers"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/hash"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
@@ -28,16 +29,16 @@ func NewMetricsClient() *http.Client {
 	return client
 }
 
-func MetricsUpload(storage metricRepository, address, key string) {
+func MetricsUpload(storage metricRepository, address, key, cryptoPath string) {
 	address = defaultProtocol + address
 
 	log.Println("sending metrics to:", address)
-	metricsUpload(storage, address, key)
+	metricsUpload(storage, address, key, cryptoPath)
 
 	metrics.ResetPollCounter(storage)
 }
 
-func metricsUpload(storage metricRepository, address, key string) {
+func metricsUpload(storage metricRepository, address, key, cryptoPath string) {
 	client := NewMetricsClient()
 	url := address + "/updates/"
 
@@ -87,6 +88,18 @@ func metricsUpload(storage metricRepository, address, key string) {
 	if err != nil {
 		log.Println("Error: ", err)
 		return
+	}
+
+	if cryptoPath != "" {
+		c, err := crypt.New(crypt.WithPublicKey(cryptoPath))
+		if err != nil {
+			log.Println(err)
+		}
+
+		marshal, err = c.Encrypt(marshal)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(marshal))
@@ -165,20 +178,22 @@ type metricRepository interface {
 }
 
 type workerPool struct {
-	workerCnt int
-	address   string
-	key       string
-	storage   metricRepository
-	taskCh    chan string
+	workerCnt  int
+	address    string
+	key        string
+	cryptoPath string
+	storage    metricRepository
+	taskCh     chan string
 }
 
-func NewWorkerPool(workerCnt int, address, key string) *workerPool {
+func NewWorkerPool(workerCnt int, address, key, cryptoPath string) *workerPool {
 	return &workerPool{
-		workerCnt: workerCnt,
-		address:   address,
-		key:       key,
-		storage:   repository.NewMemStorage(),
-		taskCh:    make(chan string),
+		workerCnt:  workerCnt,
+		address:    address,
+		key:        key,
+		cryptoPath: cryptoPath,
+		storage:    repository.NewMemStorage(),
+		taskCh:     make(chan string),
 	}
 }
 
@@ -192,7 +207,7 @@ func (wp *workerPool) Run() {
 				case "updateGopsutil":
 					metrics.UpdateMetricsGopsutil(wp.storage)
 				case "upload":
-					MetricsUpload(wp.storage, wp.address, wp.key)
+					MetricsUpload(wp.storage, wp.address, wp.key, wp.cryptoPath)
 				default:
 					log.Println("not implemented type of worker pool's task")
 				}
