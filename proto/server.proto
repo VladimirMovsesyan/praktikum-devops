@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "rpc/proto";
+
+message Metrics {
+  string ID = 1;
+  enum MType {
+    UNKNOWN = 0;
+    GAUGE = 1;
+    COUNTER = 2;
+  }
+  MType m_type = 2;
+  int64 delta = 3;
+  double value = 4;
+  string hash = 5;
+}
+
+message BatchUpdateMetricsRequest {
+  repeated Metrics metrics = 1;
+}
+
+message BatchUpdateMetricsResponse {}
+
+service MetricsCollection {
+  rpc UpdateMetrics(BatchUpdateMetricsRequest) returns (BatchUpdateMetricsResponse);
+}
