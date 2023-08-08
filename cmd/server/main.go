@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"flag"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/cache"
+	"github.com/VladimirMovsesyan/praktikum-devops/internal/config"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/crypt"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
@@ -41,6 +42,7 @@ var (
 	flKey           *string        // KEY
 	flDSN           *string        // DATABASE_DSN
 	flCrypt         *string        // CRYPTO_KEY
+	flConfig        *bool          // CONFIG
 )
 
 func parseFlags() {
@@ -52,6 +54,7 @@ func parseFlags() {
 	flKey = flag.String("k", "", "Hash key")                                       // KEY
 	flDSN = flag.String("d", "", "Data source name")                               // DATABASE_DSN
 	flCrypt = flag.String("crypto-key", "", "Path to private crypto key")          // CRYPTO_KEY
+	flConfig = flag.Bool("config", false, "Configuration by config json file")     // CONFIG
 	flag.Parse()
 }
 
@@ -60,13 +63,34 @@ func main() {
 	log.Println("Build date:", buildDate)
 	log.Println("Build commit:", buildCommit)
 	parseFlags()
+
+	configuration := &config.ServerConfig{}
+
+	conf := utils.UpdateBoolVar(
+		"CONFIG",
+		flConfig,
+		false,
+	)
+	if conf {
+		var err error
+		configuration, err = config.NewServerConfig()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+
+	log.Println(configuration)
+
 	key := utils.UpdateStringVar(
 		"KEY",
 		flKey,
+		configuration.Key,
 	)
 	dbDSN := utils.UpdateStringVar(
 		"DATABASE_DSN",
 		flDSN,
+		configuration.Dsn,
 	)
 
 	db, err := sql.Open("postgres", dbDSN)
@@ -88,6 +112,7 @@ func main() {
 	cryptoPath := utils.UpdateStringVar(
 		"CRYPTO_KEY",
 		flCrypt,
+		configuration.Crypt,
 	)
 	if cryptoPath != "" {
 		c, err := crypt.New(crypt.WithPrivateKey(cryptoPath))
@@ -100,24 +125,37 @@ func main() {
 	address := utils.UpdateStringVar(
 		"ADDRESS",
 		flAddr,
+		configuration.Address,
 	)
 	server := http.Server{Addr: address, Handler: router}
+
+	cTime := defaultStore
+	if conf {
+		cTime, err = time.ParseDuration(configuration.StoreInterval)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
 
 	storeInterval := time.NewTicker(
 		utils.UpdateDurVar(
 			"STORE_INTERVAL",
 			flStoreInterval,
+			cTime,
 		),
 	)
 
 	storeFilePath := utils.UpdateStringVar(
 		"STORE_FILE",
 		flStoreFile,
+		configuration.StoreFile,
 	)
 
 	restore := utils.UpdateBoolVar(
 		"RESTORE",
 		flRestore,
+		configuration.Restore,
 	)
 
 	if restore && dbDSN == "" {
