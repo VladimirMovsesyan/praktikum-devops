@@ -43,6 +43,7 @@ var (
 	flDSN           *string        // DATABASE_DSN
 	flCrypt         *string        // CRYPTO_KEY
 	flConfig        *bool          // CONFIG
+	flSubnet        *string        // TRUSTED_SUBNET
 )
 
 func parseFlags() {
@@ -55,6 +56,7 @@ func parseFlags() {
 	flDSN = flag.String("d", "", "Data source name")                               // DATABASE_DSN
 	flCrypt = flag.String("crypto-key", "", "Path to private crypto key")          // CRYPTO_KEY
 	flConfig = flag.Bool("config", false, "Configuration by config json file")     // CONFIG
+	flSubnet = flag.String("t", "", "Trusted subnet")                              // TRUSTED_SUBNET
 	flag.Parse()
 }
 
@@ -105,7 +107,13 @@ func main() {
 		storage = repository.NewPostgreStorage(db)
 	}
 
-	router := utils.NewRouter(storage, key, db)
+	subnet := utils.UpdateStringVar(
+		"TRUSTED_SUBNET",
+		flSubnet,
+		configuration.Subnet,
+	)
+
+	router := utils.NewRouter(storage, key, db, subnet)
 
 	cryptoPath := utils.UpdateStringVar(
 		"CRYPTO_KEY",

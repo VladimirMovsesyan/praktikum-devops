@@ -11,6 +11,7 @@ import (
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/metrics"
 	"github.com/VladimirMovsesyan/praktikum-devops/internal/repository"
 	"log"
+	"net"
 	"net/http"
 	"time"
 )
@@ -36,6 +37,18 @@ func MetricsUpload(storage metricRepository, address, key, cryptoPath string) {
 	metricsUpload(storage, address, key, cryptoPath)
 
 	metrics.ResetPollCounter(storage)
+}
+
+func getRealIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Println(err)
+		return ""
+	}
+	defer conn.Close()
+
+	addr := conn.LocalAddr().(*net.UDPAddr)
+	return addr.String()
 }
 
 func metricsUpload(storage metricRepository, address, key, cryptoPath string) {
@@ -109,6 +122,7 @@ func metricsUpload(storage metricRepository, address, key, cryptoPath string) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Real-IP", getRealIP())
 
 	resp, err := client.Do(req)
 	if err != nil {

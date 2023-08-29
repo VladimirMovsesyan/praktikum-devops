@@ -13,6 +13,7 @@ type ServerConfig struct {
 	Key           string `json:"key,omitempty"`
 	Dsn           string `json:"dsn,omitempty"`
 	Crypt         string `json:"crypt,omitempty"`
+	Subnet        string `json:"subnet,omitempty"`
 }
 
 const filename = "config.json"
